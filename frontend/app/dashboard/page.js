@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,6 +8,8 @@ import WorkingHoursManager from '../../components/WorkingHoursManager';
 import BookingsManager from '../../components/BookingsManager';
 import UnavailabilityManager from '../../components/UnavailabilityManager';
 import CalendarView from '../../components/CalendarView';
+
+export const dynamic = 'force-dynamic';
 
 
 export default function DashboardPage() {
