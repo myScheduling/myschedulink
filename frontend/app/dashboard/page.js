@@ -100,7 +100,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-4">
                             {user?._id && (
-                                
+                                <a
                                     href={`/booking/${user._id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
