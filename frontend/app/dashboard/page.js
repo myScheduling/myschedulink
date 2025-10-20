@@ -19,13 +19,11 @@ export default function DashboardPage() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        // 🔥 ΚΡΙΣΙΜΟ: Παίρνουμε το token από το URL αν υπάρχει
         const tokenFromUrl = searchParams.get('token');
         
         if (tokenFromUrl) {
-            console.log('✅ Token found in URL, saving to localStorage...');
+            console.log('Token found in URL, saving to localStorage...');
             localStorage.setItem('token', tokenFromUrl);
-            // Καθαρίζουμε το URL χωρίς reload
             window.history.replaceState({}, '', '/dashboard');
         }
         
@@ -37,12 +35,12 @@ export default function DashboardPage() {
             const token = localStorage.getItem('token');
             
             if (!token) {
-                console.log('❌ No token found, redirecting to home...');
+                console.log('No token found, redirecting to home...');
                 router.push('/');
                 return;
             }
 
-            console.log('🔄 Fetching user data with token...');
+            console.log('Fetching user data with token...');
 
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/users/me`, {
@@ -55,16 +53,16 @@ export default function DashboardPage() {
 
             if (res.ok) {
                 const data = await res.json();
-                console.log('✅ User data loaded:', data);
+                console.log('User data loaded:', data);
                 setUser(data);
                 setLoading(false);
             } else {
-                console.log('❌ Failed to fetch user, status:', res.status);
+                console.log('Failed to fetch user, status:', res.status);
                 localStorage.removeItem('token');
                 router.push('/');
             }
         } catch (error) {
-            console.error('❌ Error fetching user:', error);
+            console.error('Error fetching user:', error);
             localStorage.removeItem('token');
             router.push('/');
         }
@@ -87,23 +85,20 @@ export default function DashboardPage() {
     }
 
     if (!user) {
-        return null; // Θα redirect αυτόματα
+        return null;
     }
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
             <div className="bg-white shadow">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-6">
                         <div className="flex items-center gap-4">
-                            {/* Logo */}
                             <img 
                                 src="/logo.png" 
                                 alt="Site Logo" 
                                 className="h-40 w-auto"
                             />
-                            {/* Title & Welcome */}
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
                                 <p className="text-gray-600">Welcome back, {user?.displayName}!</p>
@@ -111,15 +106,15 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-4">
                             {user?._id && (
-    
-        href={`/booking/${user._id}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
-    >
-        🔗 View Booking Page
-    </a>
-)}
+                                
+                                    href={`/booking/${user._id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                                >
+                                    View Booking Page
+                                </a>
+                            )}
                             <button
                                 onClick={handleLogout}
                                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
@@ -129,7 +124,6 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Tabs Navigation */}
                     <div className="border-b border-gray-200">
                         <nav className="-mb-px flex space-x-8 overflow-x-auto">
                             {[
@@ -160,7 +154,6 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {activeTab === 'profile' && <ProfileManager user={user} onUpdate={fetchUserData} />}
                 {activeTab === 'services' && <ServiceManager />}
