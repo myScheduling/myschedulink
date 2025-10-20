@@ -11,7 +11,6 @@ import CalendarView from '../../components/CalendarView';
 
 export const dynamic = 'force-dynamic';
 
-
 export default function DashboardPage() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -43,9 +42,10 @@ export default function DashboardPage() {
                 return;
             }
 
-            console.log('📄 Fetching user data with token...');
+            console.log('🔄 Fetching user data with token...');
 
-            const res = await fetch('http://localhost:5000/api/users/me', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/users/me`, {
                 headers: { 
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -111,8 +111,8 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-4">
                             {user?._id && (
-                                <a
-                                    href={`http://localhost:3000/booking/${user._id}`}
+                                
+                                    href={`/booking/${user._id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
