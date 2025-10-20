@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProfileManager from '../../components/ProfileManager';
 import ServiceManager from '../../components/ServiceManager';
@@ -11,7 +11,7 @@ import CalendarView from '../../components/CalendarView';
 
 export const dynamic = 'force-dynamic';
 
-export default function DashboardPage() {
+function DashboardContent() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('profile');
@@ -149,5 +149,20 @@ export default function DashboardPage() {
                 {activeTab === 'unavailability' && <UnavailabilityManager />}
             </div>
         </div>
+    );
+}
+
+export default function DashboardPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading...</p>
+                </div>
+            </div>
+        }>
+            <DashboardContent />
+        </Suspense>
     );
 }
