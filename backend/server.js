@@ -14,44 +14,52 @@ const unavailabilityRoutes = require('./routes/unavailabilityRoutes');
 const cookieParser = require('cookie-parser');
 const staffRoutes = require('./routes/staffRoutes');
 
-
 // Σύνδεση με τη βάση δεδομένων
 connectDB();
 
 const app = express();
 
-// Ενεργοποίηση του CORS για να μιλάει το frontend με το backend
+// CORS - Επιτρέπει και localhost και production frontend
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    process.env.FRONTEND_URL // Θα το ορίσουμε στο Render
+];
+
 app.use(cors({
-    origin: 'http://localhost:3000', // Επέτρεψε αιτήματα ΜΟΝΟ από το frontend σου
-    credentials: true // Επέτρεψε την αποστολή cookies
+    origin: function(origin, callback) {
+        // Επέτρεψε requests χωρίς origin (π.χ. mobile apps, Postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes(undefined)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
 }));
 
-// η μαλακια για τα cookies 
+// Cookies middleware
 app.use(cookieParser());
 
 // Middleware για να διαβάζει JSON bodies
 app.use(express.json());
 
-app.use('/api/services', serviceRoutes);
-app.use('/api/bookings', bookingRoutes);
-
-app.use('/api/staff', staffRoutes);
-
 // Routes
 app.get('/', (req, res) => {
-    res.send('API is running...');
+    res.send('🚀 MySchedulink API is running...');
 });
 
-// Χρήση των routes για την αυθεντικοποίηση
 app.use('/api/auth', authRoutes);
-
-//Για τα unvailable ραντεβού .
-app.use('/api/unavailability', unavailabilityRoutes);
-
 app.use('/api/users', userRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/unavailability', unavailabilityRoutes);
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`✅ Server is running on port ${PORT}`);
 });
