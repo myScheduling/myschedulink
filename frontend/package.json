@@ -2,11 +2,14 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+{
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start"
-  },
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "export": "next build && next export"
+  }
+}
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
