@@ -1,8 +1,7 @@
 // frontend/app/page.tsx
 
 export default function Home() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  
+const apiUrl = 'https://myschedulink-backend.onrender.com';  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="text-center z-10">
