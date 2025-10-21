@@ -1,19 +1,16 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "engines": {
     "node": "18.x",
     "npm": "10.x"
   },
   "scripts": {
     "start": "node server.js"
-  }
-}
-
-{
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  },
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
