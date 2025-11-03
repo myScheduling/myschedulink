@@ -1,11 +1,11 @@
 // frontend/app/page.tsx
 
 export default function Home() {
-const apiUrl = 'https://myschedulink-backend.onrender.com';  
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="text-center z-10">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <img 
             src="/logo.png" 
@@ -26,7 +26,7 @@ const apiUrl = 'https://myschedulink-backend.onrender.com';
           href={`${apiUrl}/api/auth/google`}
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
         >
-          Σύνδεση με Google &rarr;
+          Σύνδεση με Google
         </a>
       </div>
     </main>
