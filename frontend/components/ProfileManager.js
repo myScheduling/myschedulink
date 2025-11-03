@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+
 
 export default function ProfileManager() {
     const [profile, setProfile] = useState({
@@ -18,7 +20,7 @@ export default function ProfileManager() {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                const res = await fetch('http://localhost:5000/api/users/me', { credentials: 'include' });
+                const res = await fetch('http://`${API_URL}/api/users/me', { credentials: 'include' });
                 if (res.ok) {
                     const userData = await res.json();
                     setProfile({
@@ -45,7 +47,7 @@ export default function ProfileManager() {
         e.preventDefault();
         setMessage('Saving...');
         try {
-            const res = await fetch('http://localhost:5000/api/users/profile', {
+            const res = await fetch('http://`${API_URL}/api/users/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(profile),

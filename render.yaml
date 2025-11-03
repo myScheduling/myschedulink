@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: myschedulink-api
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: node server.js
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      # Παρακάτω κλειδιά θα πρέπει να οριστούν από το Render dashboard με τα δικά σας values
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+

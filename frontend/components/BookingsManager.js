@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+
 
 export default function BookingsManager() {
     const [bookings, setBookings] = useState([]);
@@ -28,7 +30,7 @@ export default function BookingsManager() {
         if (filters.endDate) params.append('endDate', filters.endDate);
 
         try {
-            const res = await fetch(`http://localhost:5000/api/bookings/my-bookings?${params}`, {
+            const res = await fetch(`http://`${API_URL}/api/bookings/my-bookings?${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -45,7 +47,7 @@ export default function BookingsManager() {
     const fetchStats = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('http://localhost:5000/api/bookings/stats', {
+            const res = await fetch(`${API_URL}/api/bookings/stats', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -62,7 +64,7 @@ export default function BookingsManager() {
 
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
+            const res = await fetch(`http://`${API_URL}/api/bookings/${bookingId}/cancel`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

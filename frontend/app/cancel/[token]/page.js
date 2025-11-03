@@ -20,7 +20,7 @@ export default function CancelBookingPage() {
 
     const fetchBooking = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/bookings/cancel/${token}`);
+            const res = await fetch(`http://`${API_URL}/api/bookings/cancel/${token}`);
             
             if (res.status === 404) {
                 setError('Booking not found. The link may be invalid.');
@@ -46,7 +46,7 @@ export default function CancelBookingPage() {
         setError('');
 
         try {
-            const res = await fetch(`http://localhost:5000/api/bookings/cancel/${token}`, {
+            const res = await fetch(`http://`${API_URL}/api/bookings/cancel/${token}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason }),

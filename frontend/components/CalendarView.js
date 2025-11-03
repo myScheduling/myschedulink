@@ -5,6 +5,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+
 
 export default function CalendarView() {
     const [bookings, setBookings] = useState([]);
@@ -19,7 +21,7 @@ export default function CalendarView() {
     const fetchBookings = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('http://localhost:5000/api/bookings/my-bookings', {
+            const res = await fetch('http://`${API_URL}/api/bookings/my-bookings', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -72,7 +74,7 @@ export default function CalendarView() {
         const bookingId = selectedEvent.id;
 
         try {
-            const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/cancel`, {
+            const res = await fetch(`http://`${API_URL}/api/bookings/${bookingId}/cancel`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

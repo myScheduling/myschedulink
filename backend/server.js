@@ -19,23 +19,23 @@ connectDB();
 
 const app = express();
 
-// CORS - Επιτρέπει και localhost και production frontend
+// CORS - Επιτρέπει localhost και production frontend (ορισμένο μέσω CLIENT_URL)
+const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL;
 const allowedOrigins = [
     'http://localhost:3000',
-    'http://localhost:3001', 
-    process.env.FRONTEND_URL // Θα το ορίσουμε στο Render
-];
+    'http://localhost:3001',
+    clientUrl
+].filter(Boolean);
 
 app.use(cors({
     origin: function(origin, callback) {
         // Επέτρεψε requests χωρίς origin (π.χ. mobile apps, Postman)
         if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes(undefined)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
         }
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true
 }));

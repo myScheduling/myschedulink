@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../config/api';
+
 
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -13,7 +15,7 @@ export default function WorkingHoursManager() {
     useEffect(() => {
         const fetchUserHours = async () => {
             setLoading(true);
-            const res = await fetch('http://localhost:5000/api/users/me', { credentials: 'include' });
+            const res = await fetch(`${API_URL}/api/users/me', { credentials: 'include' });
             if (res.ok) {
                 const userData = await res.json();
                 setHours(userData.workingHours);
@@ -55,7 +57,7 @@ export default function WorkingHoursManager() {
 
     const handleSaveChanges = async () => {
         setMessage('Saving...');
-        const res = await fetch('http://localhost:5000/api/users/working-hours', {
+        const res = await fetch(`${API_URL}/api/users/working-hours', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ workingHours: hours }),

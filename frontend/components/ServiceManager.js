@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+
 
 export default function ServiceManager() {
     const [services, setServices] = useState([]);
@@ -13,7 +15,7 @@ export default function ServiceManager() {
     // Fetch services when component loads
     useEffect(() => {
         const fetchServices = async () => {
-            const res = await fetch('http://localhost:5000/api/services', { credentials: 'include' });
+            const res = await fetch('http://`${API_URL}/api/services', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setServices(data);
@@ -29,7 +31,7 @@ export default function ServiceManager() {
             return;
         }
 
-        const res = await fetch('http://localhost:5000/api/services', {
+        const res = await fetch('http://`${API_URL}/api/services', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

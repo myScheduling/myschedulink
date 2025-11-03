@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../config/api';
 
 export default function UnavailabilityManager() {
     const [unavailabilities, setUnavailabilities] = useState([]);
@@ -24,7 +25,7 @@ export default function UnavailabilityManager() {
     const fetchUnavailabilities = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('http://localhost:5000/api/unavailability', {
+            const res = await fetch(`${API_URL}/api/unavailability', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -43,7 +44,7 @@ export default function UnavailabilityManager() {
         const token = localStorage.getItem('token');
 
         try {
-            const res = await fetch('http://localhost:5000/api/unavailability', {
+            const res = await fetch(`${API_URL}/api/unavailability', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export default function UnavailabilityManager() {
 
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`http://localhost:5000/api/unavailability/${id}`, {
+            const res = await fetch(`http://`${API_URL}/api/unavailability/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
