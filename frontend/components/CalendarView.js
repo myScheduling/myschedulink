@@ -5,7 +5,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+import API_URL from '../src/config/api';  // ← ΠΡΟΣΘΗΚΗ
 
 
 export default function CalendarView() {
@@ -74,7 +74,7 @@ export default function CalendarView() {
         const bookingId = selectedEvent.id;
 
         try {
-            const res = await fetch(`http://`${API_URL}/api/bookings/${bookingId}/cancel`, {
+            const res = await fetch(`${API_URL}/api/bookings/${bookingId}/cancel`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
