@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+import API_URL from '../src/config/api';  // ← ΠΡΟΣΘΗΚΗ
 
 
 export default function BookingInterface({ services, professionalId }) {    

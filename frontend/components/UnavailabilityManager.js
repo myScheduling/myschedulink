@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import API_URL from '../config/api';
+import API_URL from '../src/config/api';
 
 export default function UnavailabilityManager() {
     const [unavailabilities, setUnavailabilities] = useState([]);

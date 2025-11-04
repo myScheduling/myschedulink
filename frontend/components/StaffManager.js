@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import API_URL from '../config/api';
+import API_URL from '../src/config/api';
 
 export default function StaffManager() {
     const [staff, setStaff] = useState([]);
@@ -34,7 +34,7 @@ export default function StaffManager() {
     const fetchStaff = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_URL}/api/staff', {
+            const res = await fetch(`${API_URL}/api/staff`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -53,7 +53,7 @@ export default function StaffManager() {
     const fetchServices = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_URL}/api/services', {
+            const res = await fetch(`${API_URL}/api/services`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -70,8 +70,8 @@ export default function StaffManager() {
         const token = localStorage.getItem('token');
 
         const url = editingStaff 
-            ? `http://`${API_URL}/api/staff/${editingStaff._id}`
-            : `${API_URL}/api/staff';
+            ? `${API_URL}/api/staff/${editingStaff._id}`
+            : `${API_URL}/api/staff`;
         
         const method = editingStaff ? 'PUT' : 'POST';
 
@@ -124,7 +124,7 @@ export default function StaffManager() {
 
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`http://`${API_URL}/api/staff/${id}`, {
+            const res = await fetch(`${API_URL}/api/staff/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
