@@ -38,7 +38,7 @@ function DashboardContent() {
                 return;
             }
 
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://`${API_URL}';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             const res = await fetch(`${apiUrl}/api/users/me`, {
                 headers: { 
                     'Authorization': `Bearer ${token}`,
