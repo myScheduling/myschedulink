@@ -6,13 +6,31 @@ dotenv.config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const serviceRoutes = require('./routes/serviceRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const unavailabilityRoutes = require('./routes/unavailabilityRoutes');
 const cookieParser = require('cookie-parser');
-const staffRoutes = require('./routes/staffRoutes');
+
+// Load routes with error handling
+let authRoutes, userRoutes, serviceRoutes, bookingRoutes, unavailabilityRoutes, staffRoutes;
+
+try {
+    console.log('Loading routes...');
+    authRoutes = require('./routes/authRoutes');
+    console.log('✅ authRoutes loaded');
+    userRoutes = require('./routes/userRoutes');
+    console.log('✅ userRoutes loaded');
+    serviceRoutes = require('./routes/serviceRoutes');
+    console.log('✅ serviceRoutes loaded');
+    bookingRoutes = require('./routes/bookingRoutes');
+    console.log('✅ bookingRoutes loaded');
+    unavailabilityRoutes = require('./routes/unavailabilityRoutes');
+    console.log('✅ unavailabilityRoutes loaded');
+    staffRoutes = require('./routes/staffRoutes');
+    console.log('✅ staffRoutes loaded');
+    console.log('✅ All routes loaded successfully');
+} catch (error) {
+    console.error('❌ Error loading routes:', error);
+    console.error('Stack:', error.stack);
+    process.exit(1);
+}
 
 // Σύνδεση με τη βάση δεδομένων
 connectDB();
@@ -51,12 +69,20 @@ app.get('/', (req, res) => {
     res.send('🚀 MySchedulink API is running...');
 });
 
+console.log('Registering API routes...');
 app.use('/api/auth', authRoutes);
+console.log('✅ /api/auth routes registered');
 app.use('/api/users', userRoutes);
+console.log('✅ /api/users routes registered');
 app.use('/api/services', serviceRoutes);
+console.log('✅ /api/services routes registered');
 app.use('/api/bookings', bookingRoutes);
+console.log('✅ /api/bookings routes registered');
 app.use('/api/staff', staffRoutes);
+console.log('✅ /api/staff routes registered');
 app.use('/api/unavailability', unavailabilityRoutes);
+console.log('✅ /api/unavailability routes registered');
+console.log('✅ All API routes registered successfully');
 
 const PORT = process.env.PORT || 5000;
 
