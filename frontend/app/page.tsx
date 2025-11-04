@@ -1,7 +1,7 @@
 // frontend/app/page.tsx
 
 export default function Home() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
   
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
