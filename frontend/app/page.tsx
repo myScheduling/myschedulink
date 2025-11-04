@@ -2,6 +2,7 @@
 
 export default function Home() {
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
+  const authHref = new URL('/api/auth/google', apiUrl).toString();
   
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
@@ -23,7 +24,7 @@ export default function Home() {
         </p>
 
         <a
-          href={`${apiUrl}/api/auth/google`}
+          href={authHref}
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
         >
           Σύνδεση με Google
