@@ -22,7 +22,7 @@ export default function Home() {
           Συνδέσου για να διαχειριστείς τις υπηρεσίες και το ημερολόγιό σου.
         </p>
 
-        
+        <a
           href={`${apiUrl}/api/auth/google`}
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
         >

@@ -20,7 +20,7 @@ export default function CancelBookingPage() {
 
     const fetchBooking = async () => {
         try {
-            const res = await fetch(`http://`${API_URL}/api/bookings/cancel/${token}`);
+            const res = await fetch(\${API_URL}/api/bookings/cancel/${token}`);
             
             if (res.status === 404) {
                 setError('Booking not found. The link may be invalid.');

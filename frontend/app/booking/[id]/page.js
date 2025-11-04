@@ -6,7 +6,7 @@ import BookingInterface from '../../../components/BookingInterface';
 
 async function getProfessionalData(id) {
     try {
-        const res = await fetch(`http://`${API_URL}/api/users/${id}/public`, {
+        const res = await fetch(\`${API_URL}/api/users/${id}/public`, {
             cache: 'no-store',
         });
         if (!res.ok) {
