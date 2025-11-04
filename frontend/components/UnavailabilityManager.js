@@ -47,7 +47,7 @@ export default function UnavailabilityManager() {
             const res = await fetch(`${API_URL}/api/unavailability', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json' ,
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(formData)
