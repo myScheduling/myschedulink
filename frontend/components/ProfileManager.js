@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import API_URL from '../config/api';  // ← ΠΡΟΣΘΗΚΗ
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
 export default function ProfileManager() {

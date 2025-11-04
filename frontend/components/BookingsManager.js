@@ -47,7 +47,7 @@ export default function BookingsManager() {
     const fetchStats = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_URL}/api/bookings/stats', {
+            const res = await fetch(`${API_URL}/api/bookings/stats`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

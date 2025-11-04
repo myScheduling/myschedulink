@@ -25,7 +25,7 @@ export default function UnavailabilityManager() {
     const fetchUnavailabilities = async () => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_URL}/api/unavailability', {
+            const res = await fetch(`${API_URL}/api/unavailability`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

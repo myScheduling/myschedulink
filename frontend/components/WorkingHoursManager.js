@@ -57,7 +57,7 @@ export default function WorkingHoursManager() {
 
     const handleSaveChanges = async () => {
         setMessage('Saving...');
-        const res = await fetch(`${API_URL}/api/users/working-hours', {
+        const res = await fetch(`${API_URL}/api/users/working-hours`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ workingHours: hours }),
