@@ -64,12 +64,25 @@ app.use(cookieParser());
 // Middleware για να διαβάζει JSON bodies
 app.use(express.json());
 
+// Request logging middleware (for debugging)
+app.use((req, res, next) => {
+    console.log(`📥 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+    next();
+});
+
 // Routes
 app.get('/', (req, res) => {
     res.send('🚀 MySchedulink API is running...');
 });
 
+// Test route to verify API routing works
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'API routes are working!', timestamp: new Date().toISOString() });
+});
+
 console.log('Registering API routes...');
+console.log('authRoutes type:', typeof authRoutes);
+console.log('authRoutes is function:', typeof authRoutes === 'function');
 app.use('/api/auth', authRoutes);
 console.log('✅ /api/auth routes registered');
 app.use('/api/users', userRoutes);
@@ -83,6 +96,17 @@ console.log('✅ /api/staff routes registered');
 app.use('/api/unavailability', unavailabilityRoutes);
 console.log('✅ /api/unavailability routes registered');
 console.log('✅ All API routes registered successfully');
+
+// 404 handler - must be last
+app.use((req, res) => {
+    console.log(`❌ 404 - Route not found: ${req.method} ${req.url}`);
+    res.status(404).json({ 
+        error: 'Route not found', 
+        method: req.method, 
+        path: req.url,
+        message: 'The requested endpoint does not exist. Check your API URL and route path.'
+    });
+});
 
 const PORT = process.env.PORT || 5000;
 
