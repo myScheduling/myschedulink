@@ -15,7 +15,7 @@ export default function WorkingHoursManager() {
     useEffect(() => {
         const fetchUserHours = async () => {
             setLoading(true);
-            const res = await fetch(`${API_URL}/api/users/me', { credentials: 'include' });
+            const res = await fetch(`${API_URL}/api/users/me`, { credentials: 'include' });
             if (res.ok) {
                 const userData = await res.json();
                 setHours(userData.workingHours);

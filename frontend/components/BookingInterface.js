@@ -31,7 +31,7 @@ export default function BookingInterface({ services, professionalId }) {
         if (!selectedService) return;
         setLoadingTimes(true);
         const dateString = date.toISOString().split('T')[0];
-        const url = `http://`${API_URL}/api/bookings/availability?userId=${professionalId}&serviceId=${selectedService._id}&date=${dateString}&timestamp=${Date.now()}`;
+        const url = `${API_URL}/api/bookings/availability?userId=${professionalId}&serviceId=${selectedService._id}&date=${dateString}&timestamp=${Date.now()}`;
         try {
             const res = await fetch(url, { cache: 'no-store' });
             if (res.ok) setAvailableTimes(await res.json());
@@ -58,7 +58,7 @@ export default function BookingInterface({ services, professionalId }) {
         console.log('🕒 Booking startTime (UTC):', startTime.toISOString());
 
         try {
-            const res = await fetch(`http://`${API_URL}/api/bookings`, {
+            const res = await fetch(`${API_URL}/api/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

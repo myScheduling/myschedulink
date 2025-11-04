@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import API_URL from '../../../src/config/api';
 import { useParams } from 'next/navigation';
 
 export default function CancelBookingPage() {
@@ -46,7 +47,7 @@ export default function CancelBookingPage() {
         setError('');
 
         try {
-            const res = await fetch(`http://`${API_URL}/api/bookings/cancel/${token}`, {
+            const res = await fetch(`${API_URL}/api/bookings/cancel/${token}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason }),
