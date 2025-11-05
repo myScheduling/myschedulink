@@ -71,12 +71,23 @@ export default function DashboardPage() {
                             />
                         </div>
 
-                        {/* User Info & Logout */}
-                        <div className="flex items-center space-x-6">
+                        {/* User Info & Actions */}
+                        <div className="flex items-center space-x-4">
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm text-gray-500">Καλώς ήρθες,</p>
                                 <p className="text-lg font-semibold text-[#1a2847]">{user?.displayName}</p>
                             </div>
+                            
+                            {/* Booking Link Button */}
+                            <button
+                                onClick={() => window.open(`/booking/${user?.uid}`, '_blank')}
+                                className="flex items-center space-x-2 px-5 py-2 bg-[#4a90e2] text-white rounded-lg font-medium hover:bg-[#1a2847] transition-all duration-300 shadow-md hover:shadow-lg"
+                            >
+                                <span>🔗</span>
+                                <span className="hidden md:inline">Booking Link</span>
+                            </button>
+
+                            {/* Logout Button */}
                             <button
                                 onClick={handleLogout}
                                 className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-all duration-300 shadow-md hover:shadow-lg"
