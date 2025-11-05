@@ -144,7 +144,7 @@ export default function BookingInterface({ services, professionalId, professiona
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const weekday = dayNames[date.getDay()];
         
-        console.log('📅 Checking availability for:', weekday);
+        console.log('📅 Checking availability for:', weekday, date.toISOString().split('T')[0]);
         
         // Παίρνουμε τα slots για αυτή την ημέρα
         const daySchedule = scheduleData[weekday];
@@ -164,29 +164,35 @@ export default function BookingInterface({ services, professionalId, professiona
         console.log('✅ Found slots for', weekday, ':', daySlots);
 
         const durationMin = service.duration || 60;
-        const startOfDay = new Date(date); 
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date); 
-        endOfDay.setHours(23, 59, 59, 999);
+        const dateString = date.toISOString().split('T')[0];
 
-        // Fetch existing bookings για αυτή την ημέρα
+        // Fetch existing bookings για ΣΥΓΚΕΚΡΙΜΕΝΗ ημέρα
         let existingBookings = [];
         try {
             const bookingsQ = query(
                 collection(db, 'bookings'),
                 where('professionalId', '==', professionalId),
-                where('date', '==', date.toISOString().split('T')[0])
+                where('date', '==', dateString)  // ✅ ΒΕΛΤΙΩΣΗ: Query συγκεκριμένη ημέρα
             );
             const bookingsSnap = await getDocs(bookingsQ);
-            existingBookings = bookingsSnap.docs
-                .map(d => d.data())
-                .filter(b => b.status !== 'cancelled')
-                .map(b => ({
-                    start: b.startTime?.toDate?.() || new Date(b.startTime),
-                    end: b.endTime?.toDate?.() || new Date((b.startTime?.toDate?.() || new Date(b.startTime)).getTime() + durationMin * 60000)
-                }));
             
-            console.log('📋 Existing bookings:', existingBookings.length);
+            existingBookings = bookingsSnap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(b => b.status !== 'cancelled')  // ✅ ΒΕΛΤΙΩΣΗ: Αγνοούμε cancelled
+                .map(b => {
+                    // Parse την ώρα από το time field (π.χ. "10:00")
+                    const [hours, mins] = b.time.split(':').map(Number);
+                    const start = new Date(date);
+                    start.setHours(hours, mins, 0, 0);
+                    const end = new Date(start.getTime() + (b.services?.[0]?.duration || durationMin) * 60000);
+                    
+                    console.log(`🔒 Existing booking: ${b.time} (${b.clientName})`);
+                    
+                    return { start, end, id: b.id, time: b.time };
+                });
+            
+            console.log('📋 Total existing bookings for this day:', existingBookings.length);
+            
         } catch (error) {
             console.error('Error fetching bookings:', error);
         }
@@ -211,15 +217,25 @@ export default function BookingInterface({ services, professionalId, professiona
             // Δημιουργία υποψήφιων ωρών ανά 15 λεπτά
             for (let t = new Date(windowStart); t.getTime() + durationMin * 60000 <= windowEnd.getTime(); t = new Date(t.getTime() + 15 * 60000)) {
                 const tEnd = new Date(t.getTime() + durationMin * 60000);
-                const blockedByBooking = existingBookings.some(b => overlaps(t, tEnd, b.start, b.end));
+                const timeString = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`;
+                
+                // Έλεγχος για overlap
+                const blockedByBooking = existingBookings.some(b => {
+                    const overlapping = overlaps(t, tEnd, b.start, b.end);
+                    if (overlapping) {
+                        console.log(`❌ ${timeString} blocked by booking at ${b.time}`);
+                    }
+                    return overlapping;
+                });
                 
                 if (!blockedByBooking) {
-                    candidates.push(`${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`);
+                    candidates.push(timeString);
+                    console.log(`✅ ${timeString} available`);
                 }
             }
         }
 
-        console.log('✅ Available slots:', candidates.length);
+        console.log('✅ Total available slots:', candidates.length);
         
         // Deduplicate και sort
         return Array.from(new Set(candidates)).sort();
