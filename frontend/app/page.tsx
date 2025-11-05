@@ -24,9 +24,13 @@ export default function Home() {
             router.push('/dashboard');
 
         } catch (error) {
-            // Κάτι πήγε στραβά (π.χ. έκλεισε το παράθυρο)
-            console.error("Σφάλμα σύνδεσης:", error.message);
-        }
+    // Κάτι πήγε στραβά (π.χ. έκλεισε το παράθυρο)
+    if (error instanceof Error) {
+        console.error("Σφάλμα σύνδεσης:", error.message);
+    } else {
+        console.error("Άγνωστο σφάλμα σύνδεσης:", error);
+    }
+}
     };
 
     return (
