@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 // 1. ΕΙΣΑΓΟΥΜΕ ΤΑ ΕΡΓΑΛΕΙΑ ΤΗΣ ΒΑΣΗΣ (db) ΚΑΙ ΤΟΥ USER (auth)
-import { db, auth } from '../../firebase'; 
+import { db, auth } from '../firebase'; 
 import { collection, getDocs, addDoc, query, where } from "firebase/firestore"; 
 
 export default function ServiceManager() {

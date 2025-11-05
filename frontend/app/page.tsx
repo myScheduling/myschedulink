@@ -1,3 +1,5 @@
+"use client";
+
 // Κάνε import αυτά που χρειάζεσαι (από το Firebase και το Next.js)
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../firebase"; // Το αρχείο που φτιάξαμε πριν
