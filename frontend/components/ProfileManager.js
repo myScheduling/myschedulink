@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
+import { db, auth } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function ProfileManager() {
     const [profile, setProfile] = useState({
@@ -16,13 +16,19 @@ export default function ProfileManager() {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        // Φορτώνουμε τα υπάρχοντα στοιχεία του προφίλ όταν ανοίγει η σελίδα
         const fetchProfile = async () => {
+            if (!auth.currentUser) {
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             try {
-                const res = await fetch('http://`${API_URL}/api/users/me', { credentials: 'include' });
-                if (res.ok) {
-                    const userData = await res.json();
+                const userDocRef = doc(db, "users", auth.currentUser.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
                     setProfile({
                         displayName: userData.displayName || '',
                         businessName: userData.businessName || '',
@@ -45,20 +51,23 @@ export default function ProfileManager() {
 
     const handleSaveProfile = async (e) => {
         e.preventDefault();
+        
+        if (!auth.currentUser) {
+            setMessage('Error: No user logged in');
+            return;
+        }
+
         setMessage('Saving...');
         try {
-            const res = await fetch('http://`${API_URL}/api/users/profile', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(profile),
-                credentials: 'include',
-            });
+            const userDocRef = doc(db, "users", auth.currentUser.uid);
+            await setDoc(userDocRef, {
+                displayName: profile.displayName,
+                businessName: profile.businessName,
+                address: profile.address,
+                phone: profile.phone
+            }, { merge: true });
 
-            if (res.ok) {
-                setMessage('Profile saved successfully!');
-            } else {
-                throw new Error('Failed to save profile');
-            }
+            setMessage('Profile saved successfully!');
         } catch (error) {
             setMessage('Error saving profile. Please try again.');
             console.error(error);

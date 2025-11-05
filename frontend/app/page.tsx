@@ -1,35 +1,41 @@
-// frontend/app/page.tsx
+// Κάνε import αυτά που χρειάζεσαι (από το Firebase και το Next.js)
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from "../firebase"; // Το αρχείο που φτιάξαμε πριν
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
-  const authHref = new URL('/api/auth/google', apiUrl).toString();
-  
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="text-center z-10">
-        <div className="flex justify-center mb-8">
-          <img 
-            src="/logo.png" 
-            alt="MySchedulink Logo" 
-            className="h-40 w-auto"
-          />
+    const router = useRouter();
+
+    // Αυτή είναι όλη η συνάρτηση login!
+    const handleGoogleLogin = async () => {
+        const provider = new GoogleAuthProvider();
+        
+        try {
+            // 1. Ανοίγει το pop-up παράθυρο της Google
+            const result = await signInWithPopup(auth, provider);
+            
+            // 2. Το login πέτυχε!
+            const user = result.user;
+            console.log("Επιτυχής σύνδεση:", user.displayName);
+            
+            // 3. Στείλ' τον στο dashboard
+            router.push('/dashboard');
+
+        } catch (error) {
+            // Κάτι πήγε στραβά (π.χ. έκλεισε το παράθυρο)
+            console.error("Σφάλμα σύνδεσης:", error.message);
+        }
+    };
+
+    return (
+        <div>
+            <h1>Καλώς ήρθες!</h1>
+            <button 
+                onClick={handleGoogleLogin}
+                className="bg-blue-600 text-white p-3 rounded-lg"
+            >
+                Σύνδεση με Google
+            </button>
         </div>
-
-        <h1 className="text-4xl font-bold mb-4 sm:text-5xl">
-          Καλώς ήρθες στην Εφαρμογή Κρατήσεων!
-        </h1>
-
-        <p className="text-lg mb-8 mt-6">
-          Συνδέσου για να διαχειριστείς τις υπηρεσίες και το ημερολόγιό σου.
-        </p>
-
-        <a
-          href={authHref}
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
-        >
-          Σύνδεση με Google
-        </a>
-      </div>
-    </main>
-  );
+    );
 }

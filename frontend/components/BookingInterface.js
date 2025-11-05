@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import API_URL from '../src/config/api';  // ← ΠΡΟΣΘΗΚΗ
+import { db } from '../firebase';
+import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 
 
-export default function BookingInterface({ services, professionalId }) {    
+export default function BookingInterface({ services, professionalId, professional }) {    
     const [selectedService, setSelectedService] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [availableTimes, setAvailableTimes] = useState([]);
@@ -30,13 +31,14 @@ export default function BookingInterface({ services, professionalId }) {
         setSelectedTime(null);
         if (!selectedService) return;
         setLoadingTimes(true);
-        const dateString = date.toISOString().split('T')[0];
-        const url = `${API_URL}/api/bookings/availability?userId=${professionalId}&serviceId=${selectedService._id}&date=${dateString}&timestamp=${Date.now()}`;
         try {
-            const res = await fetch(url, { cache: 'no-store' });
-            if (res.ok) setAvailableTimes(await res.json());
-        } catch (error) { console.error("Error fetching availability:", error); }
-        finally { setLoadingTimes(false); }
+            const slots = await computeAvailableSlots(date, selectedService, professionalId, professional?.workingHours);
+            setAvailableTimes(slots);
+        } catch (error) {
+            console.error('Error computing availability:', error);
+        } finally {
+            setLoadingTimes(false);
+        }
     };
     
     const handleTimeSelect = (time) => {
@@ -54,34 +56,127 @@ export default function BookingInterface({ services, professionalId }) {
         const dateString = selectedDate.toISOString().split('T')[0];
         const [hours, minutes] = selectedTime.split(':');
         const startTime = new Date(`${dateString}T${hours}:${minutes}:00.000Z`);
+        const endTime = new Date(startTime.getTime() + (selectedService.duration || 60) * 60000);
         
         console.log('🕒 Booking startTime (UTC):', startTime.toISOString());
 
         try {
-            const res = await fetch(`${API_URL}/api/bookings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    professionalId,
-                    serviceId: selectedService._id,
-                    startTime: startTime.toISOString(),
-                    clientName: clientDetails.name,
-                    clientEmail: clientDetails.email,
-                }),
+            await addDoc(collection(db, 'bookings'), {
+                professionalId,
+                serviceId: selectedService._id,
+                clientName: clientDetails.name,
+                clientEmail: clientDetails.email,
+                startTime: Timestamp.fromDate(startTime),
+                endTime: Timestamp.fromDate(endTime),
+                price: selectedService.price || 0,
+                status: 'confirmed',
+                service: { name: selectedService.name, duration: selectedService.duration, price: selectedService.price || 0 },
+                createdAt: Timestamp.fromDate(new Date())
             });
-            if (res.ok) {
-                setBookingStatus('confirmed');
-                setAvailableTimes([]);
-            } else { 
-                const errorData = await res.json();
-                console.error('Booking error:', errorData);
-                throw new Error(errorData.message || 'Booking failed'); 
-            }
+            setBookingStatus('confirmed');
+            setAvailableTimes([]);
         } catch (error) {
             setBookingStatus('error');
             console.error(error);
         }
     };
+
+    async function computeAvailableSlots(date, service, professionalId, workingHours) {
+        if (!service || !workingHours) return [];
+        const weekday = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][date.getDay()];
+        const daySlots = (workingHours[weekday] || []).map(slot => ({ ...slot }));
+        if (daySlots.length === 0) return [];
+
+        // Build candidate times based on working hours and service duration
+        const durationMin = service.duration || 60;
+        const startOfDay = new Date(date); startOfDay.setHours(0,0,0,0);
+        const endOfDay = new Date(date); endOfDay.setHours(23,59,59,999);
+
+        // Fetch existing bookings for that day
+        let existingBookings = [];
+        try {
+            const bookingsQ = query(
+                collection(db, 'bookings'),
+                where('professionalId', '==', professionalId)
+            );
+            const bookingsSnap = await getDocs(bookingsQ);
+            existingBookings = bookingsSnap.docs
+                .map(d => d.data())
+                .filter(b => {
+                    const bStart = b.startTime?.toDate?.() || new Date(b.startTime);
+                    return bStart >= startOfDay && bStart <= endOfDay;
+                })
+                .map(b => ({
+                    start: b.startTime?.toDate?.() || new Date(b.startTime),
+                    end: b.endTime?.toDate?.() || new Date((b.startTime?.toDate?.() || new Date(b.startTime)).getTime() + (b.service?.duration || durationMin) * 60000)
+                }));
+        } catch {}
+
+        // Fetch unavailabilities for that user and day
+        let dayUnavailabilities = [];
+        try {
+            const unavailQ = query(
+                collection(db, 'unavailabilities'),
+                where('userId', '==', professionalId)
+            );
+            const unavailSnap = await getDocs(unavailQ);
+            dayUnavailabilities = unavailSnap.docs
+                .map(d => d.data())
+                .filter(u => {
+                    if (u.type === 'full-day') {
+                        const dStr = new Date(u.date).toISOString().split('T')[0];
+                        const selStr = date.toISOString().split('T')[0];
+                        return dStr === selStr;
+                    }
+                    if (u.type === 'time-slot') {
+                        const s = new Date(u.startTime);
+                        return s >= startOfDay && s <= endOfDay;
+                    }
+                    if (u.type === 'recurring') {
+                        return (u.recurringDay || '').toLowerCase() === weekday;
+                    }
+                    return false;
+                })
+                .map(u => {
+                    if (u.type === 'full-day') return { start: startOfDay, end: endOfDay };
+                    if (u.type === 'time-slot') return { start: new Date(u.startTime), end: new Date(u.endTime) };
+                    // recurring: treat as daily window
+                    if (u.type === 'recurring') {
+                        const [sh, sm] = (u.recurringStartTime||'00:00').split(':').map(Number);
+                        const [eh, em] = (u.recurringEndTime||'23:59').split(':').map(Number);
+                        const rs = new Date(date); rs.setHours(sh, sm||0, 0, 0);
+                        const re = new Date(date); re.setHours(eh, em||0, 0, 0);
+                        return { start: rs, end: re };
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+        } catch {}
+
+        function overlaps(aStart, aEnd, bStart, bEnd) {
+            return aStart < bEnd && bStart < aEnd;
+        }
+
+        const candidates = [];
+        for (const slot of daySlots) {
+            const [sh, sm] = (slot.start||slot.startTime||'09:00').split(':').map(Number);
+            const [eh, em] = (slot.end||slot.endTime||'17:00').split(':').map(Number);
+            const windowStart = new Date(date); windowStart.setHours(sh, sm||0, 0, 0);
+            const windowEnd = new Date(date); windowEnd.setHours(eh, em||0, 0, 0);
+
+            for (let t = new Date(windowStart); t.getTime() + durationMin*60000 <= windowEnd.getTime(); t = new Date(t.getTime() + 15*60000)) {
+                const tEnd = new Date(t.getTime() + durationMin*60000);
+                const blockedByBooking = existingBookings.some(b => overlaps(t, tEnd, b.start, b.end));
+                const blockedByUnavail = dayUnavailabilities.some(u => overlaps(t, tEnd, u.start, u.end));
+                if (!blockedByBooking && !blockedByUnavail) {
+                    candidates.push(`${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`);
+                }
+            }
+        }
+
+        // Deduplicate and sort
+        return Array.from(new Set(candidates));
+    }
     
     if (bookingStatus === 'confirmed') {
         return (

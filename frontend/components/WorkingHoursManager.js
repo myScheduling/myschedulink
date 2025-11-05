@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
+import { db, auth } from '../firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -14,11 +14,41 @@ export default function WorkingHoursManager() {
 
     useEffect(() => {
         const fetchUserHours = async () => {
+            if (!auth.currentUser) {
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
-            const res = await fetch(`${API_URL}/api/users/me`, { credentials: 'include' });
-            if (res.ok) {
-                const userData = await res.json();
-                setHours(userData.workingHours);
+            try {
+                const userDocRef = doc(db, "users", auth.currentUser.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    setHours(userData.workingHours || {
+                        monday: [],
+                        tuesday: [{ start: '09:00', end: '17:00' }],
+                        wednesday: [{ start: '09:00', end: '17:00' }],
+                        thursday: [{ start: '09:00', end: '17:00' }],
+                        friday: [{ start: '09:00', end: '17:00' }],
+                        saturday: [{ start: '10:00', end: '14:00' }],
+                        sunday: []
+                    });
+                } else {
+                    // Initialize with default hours if document doesn't exist
+                    setHours({
+                        monday: [],
+                        tuesday: [{ start: '09:00', end: '17:00' }],
+                        wednesday: [{ start: '09:00', end: '17:00' }],
+                        thursday: [{ start: '09:00', end: '17:00' }],
+                        friday: [{ start: '09:00', end: '17:00' }],
+                        saturday: [{ start: '10:00', end: '14:00' }],
+                        sunday: []
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch working hours", error);
             }
             setLoading(false);
         };
@@ -56,22 +86,24 @@ export default function WorkingHoursManager() {
     };
 
     const handleSaveChanges = async () => {
+        if (!auth.currentUser) {
+            setMessage('Error: No user logged in');
+            return;
+        }
+
         setMessage('Saving...');
-        const res = await fetch(`${API_URL}/api/users/working-hours`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ workingHours: hours }),
-            credentials: 'include',
-        });
-        if (res.ok) {
+        try {
+            const userDocRef = doc(db, "users", auth.currentUser.uid);
+            await updateDoc(userDocRef, { workingHours: hours });
             setMessage('Working hours saved successfully!');
-        } else {
+        } catch (error) {
             setMessage('Error saving hours. Please try again.');
+            console.error(error);
         }
         setTimeout(() => setMessage(''), 3000);
     };
 
-    if (loading) {
+    if (loading || !hours) {
         return <p>Loading working hours...</p>;
     }
 

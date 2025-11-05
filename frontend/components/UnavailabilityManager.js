@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import API_URL from '../src/config/api';
+import { db, auth } from '../firebase';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 
 export default function UnavailabilityManager() {
     const [unavailabilities, setUnavailabilities] = useState([]);
@@ -23,15 +24,22 @@ export default function UnavailabilityManager() {
     }, []);
 
     const fetchUnavailabilities = async () => {
-        const token = localStorage.getItem('token');
+        if (!auth.currentUser) {
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await fetch(`${API_URL}/api/unavailability`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const q = query(
+                collection(db, "unavailabilities"),
+                where("userId", "==", auth.currentUser.uid)
+            );
+            const querySnapshot = await getDocs(q);
+            const unavailabilitiesList = [];
+            querySnapshot.forEach((doc) => {
+                unavailabilitiesList.push({ id: doc.id, ...doc.data() });
             });
-            if (res.ok) {
-                const data = await res.json();
-                setUnavailabilities(data);
-            }
+            setUnavailabilities(unavailabilitiesList);
         } catch (error) {
             console.error('Error fetching unavailabilities:', error);
         } finally {
@@ -41,56 +49,45 @@ export default function UnavailabilityManager() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem('token');
+        
+        if (!auth.currentUser) {
+            alert('Error: No user logged in');
+            return;
+        }
 
         try {
-            const res = await fetch(`${API_URL}/api/unavailability`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json' ,
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(formData)
+            await addDoc(collection(db, "unavailabilities"), {
+                ...formData,
+                userId: auth.currentUser.uid,
+                createdAt: new Date()
             });
 
-            if (res.ok) {
-                alert('Unavailability block added successfully!');
-                setShowForm(false);
-                setFormData({
-                    type: 'full-day',
-                    date: '',
-                    startTime: '',
-                    endTime: '',
-                    recurringDay: 'monday',
-                    recurringStartTime: '',
-                    recurringEndTime: '',
-                    reason: ''
-                });
-                fetchUnavailabilities();
-            } else {
-                const error = await res.json();
-                alert(error.message || 'Failed to add unavailability');
-            }
+            alert('Unavailability block added successfully!');
+            setShowForm(false);
+            setFormData({
+                type: 'full-day',
+                date: '',
+                startTime: '',
+                endTime: '',
+                recurringDay: 'monday',
+                recurringStartTime: '',
+                recurringEndTime: '',
+                reason: ''
+            });
+            fetchUnavailabilities();
         } catch (error) {
             console.error('Error creating unavailability:', error);
             alert('Network error. Please try again.');
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (docId) => {
         if (!confirm('Are you sure you want to remove this unavailability block?')) return;
 
-        const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`${API_URL}/api/unavailability/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                alert('Unavailability removed successfully!');
-                fetchUnavailabilities();
-            }
+            await deleteDoc(doc(db, "unavailabilities", docId));
+            alert('Unavailability removed successfully!');
+            fetchUnavailabilities();
         } catch (error) {
             console.error('Error deleting unavailability:', error);
             alert('Network error. Please try again.');
@@ -301,7 +298,7 @@ export default function UnavailabilityManager() {
                 ) : (
                     <div className="divide-y divide-gray-200">
                         {unavailabilities.map((unavail) => (
-                            <div key={unavail._id} className="p-6 hover:bg-gray-50 transition">
+                            <div key={unavail.id} className="p-6 hover:bg-gray-50 transition">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
@@ -316,11 +313,11 @@ export default function UnavailabilityManager() {
                                             </p>
                                         )}
                                         <p className="text-xs text-gray-400 mt-2">
-                                            Created: {new Date(unavail.createdAt).toLocaleDateString('el-GR')}
+                                            Created: {new Date(unavail.createdAt?.toDate?.() || unavail.createdAt).toLocaleDateString('el-GR')}
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => handleDelete(unavail._id)}
+                                        onClick={() => handleDelete(unavail.id)}
                                         className="ml-4 text-red-600 hover:text-red-900 font-medium text-sm"
                                     >
                                         Remove

@@ -2,26 +2,31 @@
 
 import { notFound } from 'next/navigation';
 import BookingInterface from '../../../components/BookingInterface';
+import { db } from '../../../firebase';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 
 async function getProfessionalData(id) {
     try {
-        const res = await fetch(`${API_URL}/api/users/${id}/public`, {
-            cache: 'no-store',
-        });
-        if (!res.ok) {
-            return notFound();
-        }
-        return res.json();
+        const userRef = doc(db, 'users', id);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) return notFound();
+        const professional = { _id: id, ...userSnap.data() };
+
+        const servicesQ = query(collection(db, 'services'), where('userId', '==', id));
+        const servicesSnap = await getDocs(servicesQ);
+        const services = servicesSnap.docs.map(d => ({ _id: d.id, ...d.data() }));
+
+        return { professional, services };
     } catch (error) {
-        console.error("Failed to fetch professional data:", error);
+        console.error('Failed to fetch professional data from Firestore:', error);
         return notFound();
     }
 }
 
 export default async function BookingPage({ params }) {
     const id = (await params).id;
-    const professional = await getProfessionalData(id);
+    const { professional, services } = await getProfessionalData(id);
 
     return (
         <main className="flex min-h-screen flex-col items-center p-8 bg-gray-50">
@@ -58,7 +63,7 @@ export default async function BookingPage({ params }) {
                     {/* ------------------------------------- */}
                 </div>
 
-                <BookingInterface services={professional.services} professionalId={id} />
+                <BookingInterface services={services} professionalId={id} professional={professional} />
             </div>
         </main>
     );
