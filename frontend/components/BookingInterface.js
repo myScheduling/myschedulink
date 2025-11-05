@@ -214,8 +214,8 @@ export default function BookingInterface({ services, professionalId, professiona
 
             console.log(`⏰ Processing slot: ${slot.start} - ${slot.end}`);
 
-            // Δημιουργία υποψήφιων ωρών ανά 15 λεπτά
-            for (let t = new Date(windowStart); t.getTime() + durationMin * 60000 <= windowEnd.getTime(); t = new Date(t.getTime() + 15 * 60000)) {
+            // Δημιουργία υποψήφιων ωρών ανά 30 λεπτά (αντί για 15)
+            for (let t = new Date(windowStart); t.getTime() + durationMin * 60000 <= windowEnd.getTime(); t = new Date(t.getTime() + 30 * 60000)) {
                 const tEnd = new Date(t.getTime() + durationMin * 60000);
                 const timeString = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`;
                 
