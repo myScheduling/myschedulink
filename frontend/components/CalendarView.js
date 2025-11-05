@@ -1,251 +1,303 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import API_URL from '../src/config/api';  // ← ΠΡΟΣΘΗΚΗ
-
+import { db } from '../firebase';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { useAuth } from '../hooks/useAuth';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 
 export default function CalendarView() {
+    const { user } = useAuth();
     const [bookings, setBookings] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [dayBookings, setDayBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedEvent, setSelectedEvent] = useState(null);
-    const [showModal, setShowModal] = useState(false);
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
-        fetchBookings();
-    }, []);
+        loadBookings();
+    }, [user]);
 
-    const fetchBookings = async () => {
-        const token = localStorage.getItem('token');
+    useEffect(() => {
+        // Όταν αλλάζει η επιλεγμένη ημέρα, φόρτωσε τα ραντεβού της
+        filterBookingsByDate(selectedDate);
+    }, [selectedDate, bookings]);
+
+    const loadBookings = async () => {
+        if (!user?.uid) return;
+
         try {
-            const res = await fetch('http://`${API_URL}/api/bookings/my-bookings', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setBookings(data);
-            }
+            const bookingsRef = collection(db, 'bookings');
+            const q = query(
+                bookingsRef,
+                where('professionalId', '==', user.uid)
+            );
+            const snapshot = await getDocs(q);
+
+            const bookingsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            setBookings(bookingsData);
         } catch (error) {
-            console.error('Error fetching bookings:', error);
+            console.error('Error loading bookings:', error);
+            setMessage('❌ Σφάλμα φόρτωσης ραντεβού');
         } finally {
             setLoading(false);
         }
     };
 
-    // Transform bookings για το FullCalendar format
-    const calendarEvents = bookings.map(booking => ({
-        id: booking._id,
-        title: `${booking.service?.name} - ${booking.clientName}`,
-        start: booking.startTime,
-        end: booking.endTime,
-        backgroundColor: getStatusColor(booking.status),
-        borderColor: getStatusColor(booking.status),
-        extendedProps: {
-            clientEmail: booking.clientEmail,
-            status: booking.status,
-            service: booking.service?.name,
-            duration: booking.service?.duration,
-            booking: booking
-        }
-    }));
-
-    function getStatusColor(status) {
-        const colors = {
-            confirmed: '#10b981', // green
-            cancelled: '#ef4444', // red
-            completed: '#3b82f6', // blue
-            'no-show': '#6b7280'  // gray
-        };
-        return colors[status] || '#3b82f6';
-    }
-
-    const handleEventClick = (info) => {
-        setSelectedEvent(info.event);
-        setShowModal(true);
+    const filterBookingsByDate = (date) => {
+        const dateString = date.toISOString().split('T')[0];
+        const filtered = bookings.filter(b => b.date === dateString);
+        setDayBookings(filtered.sort((a, b) => a.time.localeCompare(b.time)));
     };
 
-    const handleCancelBooking = async () => {
-        if (!confirm('Are you sure you want to cancel this booking?')) return;
+    const handleDateChange = (date) => {
+        setSelectedDate(date);
+    };
 
-        const token = localStorage.getItem('token');
-        const bookingId = selectedEvent.id;
+    const handleCancelBooking = async (bookingId) => {
+        if (!confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε αυτό το ραντεβού;')) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/bookings/${bookingId}/cancel`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const bookingRef = doc(db, 'bookings', bookingId);
+            await updateDoc(bookingRef, {
+                status: 'cancelled',
+                cancelledAt: new Date().toISOString()
             });
 
-            if (res.ok) {
-                alert('Booking cancelled successfully!');
-                setShowModal(false);
-                fetchBookings(); // Refresh
-            } else {
-                alert('Failed to cancel booking');
-            }
+            setMessage('✅ Το ραντεβού ακυρώθηκε επιτυχώς!');
+            loadBookings();
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
             console.error('Error cancelling booking:', error);
-            alert('Network error');
+            setMessage('❌ Σφάλμα ακύρωσης. Δοκιμάστε ξανά.');
         }
+    };
+
+    // Προσθέτει badges στις ημέρες που έχουν ραντεβού
+    const tileContent = ({ date, view }) => {
+        if (view !== 'month') return null;
+
+        const dateString = date.toISOString().split('T')[0];
+        const dayBookingsCount = bookings.filter(b => b.date === dateString && b.status !== 'cancelled').length;
+
+        if (dayBookingsCount === 0) return null;
+
+        return (
+            <div className="flex justify-center mt-1">
+                <div className="bg-[#4a90e2] text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                    {dayBookingsCount}
+                </div>
+            </div>
+        );
+    };
+
+    // Προσθέτει styling στις ημέρες
+    const tileClassName = ({ date, view }) => {
+        if (view !== 'month') return null;
+
+        const dateString = date.toISOString().split('T')[0];
+        const hasBookings = bookings.some(b => b.date === dateString && b.status !== 'cancelled');
+
+        if (hasBookings) {
+            return 'has-bookings';
+        }
+        return null;
+    };
+
+    const getStatusBadge = (status) => {
+        const styles = {
+            pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+            confirmed: 'bg-green-100 text-green-800 border-green-300',
+            cancelled: 'bg-red-100 text-red-800 border-red-300'
+        };
+
+        const labels = {
+            pending: '⏳ Εκκρεμεί',
+            confirmed: '✓ Επιβεβαιωμένο',
+            cancelled: '✕ Ακυρωμένο'
+        };
+
+        return (
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+                {labels[status] || status}
+            </span>
+        );
     };
 
     if (loading) {
         return (
-            <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading calendar...</p>
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a90e2]"></div>
+                <p className="ml-3 text-gray-600">Φόρτωση ημερολογίου...</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-lg shadow p-6">
-            <div className="mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Booking Calendar</h2>
-                <p className="text-gray-600 mt-1">View and manage your appointments</p>
+        <div className="max-w-7xl">
+            {/* Custom CSS for calendar */}
+            <style jsx global>{`
+                .react-calendar {
+                    border: 2px solid #e5e7eb;
+                    border-radius: 12px;
+                    padding: 20px;
+                    font-family: inherit;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                .react-calendar__tile--active {
+                    background: #4a90e2 !important;
+                    color: white !important;
+                }
+                .react-calendar__tile--now {
+                    background: #eff6ff;
+                }
+                .react-calendar__tile.has-bookings {
+                    background: #dbeafe;
+                }
+                .react-calendar__tile:hover {
+                    background: #f3f4f6;
+                }
+                .react-calendar__navigation button {
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+            `}</style>
+
+            {/* Message Alert */}
+            {message && (
+                <div className={`mb-6 p-4 rounded-lg animate-fadeIn ${
+                    message.includes('✅') 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                    {message}
+                </div>
+            )}
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
+                    <div className="flex items-center justify-between">
+                        <span className="text-3xl">📅</span>
+                        <span className="text-3xl font-bold">{bookings.filter(b => b.status !== 'cancelled').length}</span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold opacity-90">Ενεργά Ραντεβού</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
+                    <div className="flex items-center justify-between">
+                        <span className="text-3xl">📆</span>
+                        <span className="text-3xl font-bold">{dayBookings.filter(b => b.status !== 'cancelled').length}</span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold opacity-90">Ραντεβού Σήμερα</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
+                    <div className="flex items-center justify-between">
+                        <span className="text-3xl">🗓️</span>
+                        <span className="text-3xl font-bold">
+                            {new Set(bookings.filter(b => b.status !== 'cancelled').map(b => b.date)).size}
+                        </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold opacity-90">Ημέρες με Ραντεβού</p>
+                </div>
             </div>
 
-            {/* Calendar */}
-            <div className="calendar-container">
-                <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                    initialView="timeGridWeek"
-                    headerToolbar={{
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                    }}
-                    events={calendarEvents}
-                    eventClick={handleEventClick}
-                    height="auto"
-                    slotMinTime="08:00:00"
-                    slotMaxTime="22:00:00"
-                    allDaySlot={false}
-                    nowIndicator={true}
-                    editable={false}
-                    selectable={true}
-                    selectMirror={true}
-                    dayMaxEvents={true}
-                    weekends={true}
-                    locale="el"
-                />
-            </div>
-
-            {/* Legend */}
-            <div className="mt-6 flex gap-6 justify-center">
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-green-500"></div>
-                    <span className="text-sm text-gray-700">Confirmed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-blue-500"></div>
-                    <span className="text-sm text-gray-700">Completed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-red-500"></div>
-                    <span className="text-sm text-gray-700">Cancelled</span>
-                </div>
-            </div>
-
-            {/* Booking Details Modal */}
-            {showModal && selectedEvent && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">Booking Details</h3>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+            {/* Main Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Calendar */}
+                <div className="lg:col-span-2">
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-xl font-bold text-[#1a2847] mb-4">Ημερολόγιο Ραντεβού</h3>
+                        <Calendar
+                            onChange={handleDateChange}
+                            value={selectedDate}
+                            tileContent={tileContent}
+                            tileClassName={tileClassName}
+                            locale="el-GR"
+                        />
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                                <strong>💡 Συμβουλή:</strong> Οι ημέρες με μπλε badge έχουν ραντεβού. Κάντε κλικ για να δείτε λεπτομέρειες.
+                            </p>
                         </div>
+                    </div>
+                </div>
 
-                        <div className="space-y-3">
-                            <div>
-                                <p className="text-sm text-gray-600">Service</p>
-                                <p className="font-medium text-gray-900">{selectedEvent.extendedProps.service}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Client</p>
-                                <p className="font-medium text-gray-900">{selectedEvent.title.split(' - ')[1]}</p>
-                                <p className="text-sm text-gray-500">{selectedEvent.extendedProps.clientEmail}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Date & Time</p>
-                                <p className="font-medium text-gray-900">
-                                    {new Date(selectedEvent.start).toLocaleString('el-GR', {
-                                        dateStyle: 'full',
-                                        timeStyle: 'short'
-                                    })}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Duration</p>
-                                <p className="font-medium text-gray-900">{selectedEvent.extendedProps.duration} minutes</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Status</p>
-                                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                                    selectedEvent.extendedProps.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                    selectedEvent.extendedProps.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                    selectedEvent.extendedProps.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                    'bg-gray-100 text-gray-800'
-                                }`}>
-                                    {selectedEvent.extendedProps.status.toUpperCase()}
-                                </span>
-                            </div>
-                        </div>
+                {/* Day Details */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white p-6 rounded-lg shadow-md sticky top-4">
+                        <h3 className="text-lg font-bold text-[#1a2847] mb-4">
+                            Ραντεβού για {selectedDate.toLocaleDateString('el-GR', { 
+                                weekday: 'long', 
+                                day: 'numeric', 
+                                month: 'long' 
+                            })}
+                        </h3>
 
-                        {selectedEvent.extendedProps.status === 'confirmed' && (
-                            <div className="mt-6 flex gap-3">
-                                <button
-                                    onClick={handleCancelBooking}
-                                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition"
-                                >
-                                    Cancel Booking
-                                </button>
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition"
-                                >
-                                    Close
-                                </button>
+                        {dayBookings.length === 0 ? (
+                            <div className="text-center py-8">
+                                <div className="text-5xl mb-3">📭</div>
+                                <p className="text-gray-500">Δεν υπάρχουν ραντεβού για αυτή την ημέρα</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                                {dayBookings.map((booking) => (
+                                    <div
+                                        key={booking.id}
+                                        className={`p-4 border-2 rounded-lg transition-all ${
+                                            booking.status === 'cancelled' 
+                                                ? 'border-red-200 bg-red-50 opacity-60' 
+                                                : 'border-blue-200 bg-blue-50 hover:border-[#4a90e2] hover:shadow-md'
+                                        }`}
+                                    >
+                                        {/* Time & Status */}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-lg font-bold text-[#1a2847]">
+                                                🕐 {booking.time}
+                                            </span>
+                                            {getStatusBadge(booking.status)}
+                                        </div>
+
+                                        {/* Client */}
+                                        <p className="text-sm font-semibold text-gray-900 mb-1">
+                                            👤 {booking.clientName}
+                                        </p>
+                                        <p className="text-xs text-gray-600 mb-2">
+                                            📧 {booking.clientEmail}
+                                        </p>
+
+                                        {/* Service */}
+                                        <p className="text-sm text-gray-700 mb-2">
+                                            💼 {booking.serviceName || booking.services?.[0]?.name || 'N/A'}
+                                        </p>
+
+                                        {/* Price */}
+                                        <p className="text-sm font-semibold text-[#4a90e2] mb-3">
+                                            💰 {booking.totalPrice?.toFixed(2) || '0.00'}€
+                                        </p>
+
+                                        {/* Actions */}
+                                        {booking.status !== 'cancelled' && (
+                                            <button
+                                                onClick={() => handleCancelBooking(booking.id)}
+                                                className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-all"
+                                            >
+                                                Ακύρωση Ραντεβού
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
                 </div>
-            )}
-
-            <style jsx global>{`
-                .calendar-container {
-                    font-family: inherit;
-                }
-                .fc {
-                    border: 1px solid #e5e7eb;
-                    border-radius: 0.5rem;
-                }
-                .fc .fc-toolbar-title {
-                    font-size: 1.5rem;
-                    font-weight: 600;
-                }
-                .fc-theme-standard td, .fc-theme-standard th {
-                    border-color: #e5e7eb;
-                }
-                .fc-event {
-                    cursor: pointer;
-                    padding: 2px 4px;
-                }
-                .fc-event:hover {
-                    opacity: 0.9;
-                }
-                .fc-col-header-cell {
-                    background-color: #f9fafb;
-                    font-weight: 600;
-                }
-            `}</style>
+            </div>
         </div>
     );
 }

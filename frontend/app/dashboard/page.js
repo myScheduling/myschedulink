@@ -9,6 +9,7 @@ import ProfileManager from '../../components/ProfileManager';
 import ServiceManager from '../../components/ServiceManager';
 import WorkingHoursManager from '../../components/WorkingHoursManager';
 import BookingsManager from '../../components/BookingsManager';
+import CalendarView from '../../components/CalendarView';
 
 export default function DashboardPage() {
     const [user, setUser] = useState(null);
@@ -53,6 +54,7 @@ export default function DashboardPage() {
         { id: 'profile', name: 'Προφίλ', icon: '👤' },
         { id: 'services', name: 'Υπηρεσίες', icon: '💼' },
         { id: 'schedule', name: 'Ωράριο', icon: '📅' },
+        { id: 'calendar', name: 'Ημερολόγιο', icon: '🗓️' },
         { id: 'bookings', name: 'Ραντεβού', icon: '📋' }
     ];
 
@@ -144,6 +146,12 @@ export default function DashboardPage() {
                         <div>
                             <h2 className="text-2xl font-bold text-[#1a2847] mb-6">Ωράριο Λειτουργίας</h2>
                             <WorkingHoursManager />
+                        </div>
+                    )}
+                    {activeTab === 'calendar' && (
+                        <div>
+                            <h2 className="text-2xl font-bold text-[#1a2847] mb-6">Ημερολόγιο Ραντεβού</h2>
+                            <CalendarView />
                         </div>
                     )}
                     {activeTab === 'bookings' && (
