@@ -30,8 +30,8 @@ export default function BookingsManager() {
             const bookingsRef = collection(db, 'bookings');
             const q = query(
                 bookingsRef, 
-                where('professionalId', '==', user.uid),
-                orderBy('date', 'desc')
+                where('professionalId', '==', user.uid)
+                // Αφαιρέσαμε το orderBy για να μην χρειάζεται index
             );
             const snapshot = await getDocs(q);
 
@@ -39,6 +39,13 @@ export default function BookingsManager() {
                 id: doc.id,
                 ...doc.data()
             }));
+
+            // Sort στη μνήμη αντί για Firestore
+            bookingsData.sort((a, b) => {
+                const dateA = new Date(a.date + 'T' + (a.time || '00:00'));
+                const dateB = new Date(b.date + 'T' + (b.time || '00:00'));
+                return dateB - dateA; // Desc order
+            });
 
             setBookings(bookingsData);
             calculateStats(bookingsData);

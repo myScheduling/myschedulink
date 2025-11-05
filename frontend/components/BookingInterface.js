@@ -83,6 +83,7 @@ export default function BookingInterface({ services, professionalId, professiona
         console.log('🕐 Booking startTime:', startTime.toISOString());
 
         try {
+            // 1. Create booking in Firestore
             await addDoc(collection(db, 'bookings'), {
                 professionalId,
                 serviceId: selectedService._id || selectedService.id,
@@ -98,6 +99,33 @@ export default function BookingInterface({ services, professionalId, professiona
                 services: [{ name: selectedService.name, duration: selectedService.duration, price: selectedService.price || 0 }],
                 createdAt: Timestamp.fromDate(new Date())
             });
+
+            // 2. Send confirmation email
+            try {
+                await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientEmail: clientDetails.email,
+                        clientName: clientDetails.name,
+                        businessName: professional?.businessName || professional?.displayName || 'Κατάστημα',
+                        service: selectedService.name,
+                        date: selectedDate.toLocaleDateString('el-GR', { 
+                            weekday: 'long', 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                        }),
+                        time: selectedTime,
+                        address: professional?.address || '',
+                        phone: professional?.phone || ''
+                    })
+                });
+                console.log('✅ Email sent successfully!');
+            } catch (emailError) {
+                console.error('⚠️ Email failed (booking still created):', emailError);
+            }
+
             setBookingStatus('confirmed');
             setAvailableTimes([]);
         } catch (error) {
