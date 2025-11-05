@@ -1,330 +1,365 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { collection, query, where, getDocs, updateDoc, doc, orderBy } from 'firebase/firestore';
+import { useAuth } from '../hooks/useAuth';
 
 export default function BookingsManager() {
+    const { user } = useAuth();
     const [bookings, setBookings] = useState([]);
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        status: 'all',
-        search: '',
-        startDate: '',
-        endDate: ''
+    const [stats, setStats] = useState({
+        total: 0,
+        upcoming: 0,
+        thisMonth: 0,
+        cancelled: 0,
+        monthlyRevenue: 0
     });
+    const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState('');
+    const [filter, setFilter] = useState('all'); // all, upcoming, thisMonth, cancelled
 
     useEffect(() => {
-        fetchBookings();
-        fetchStats();
-    }, [filters]);
+        loadBookings();
+    }, [user]);
 
-    const fetchBookings = async () => {
-        if (!auth.currentUser) {
-            setLoading(false);
-            return;
-        }
+    const loadBookings = async () => {
+        if (!user?.uid) return;
 
         try {
-            let q = query(
-                collection(db, "bookings"),
-                where("professionalId", "==", auth.currentUser.uid)
+            const bookingsRef = collection(db, 'bookings');
+            const q = query(
+                bookingsRef, 
+                where('professionalId', '==', user.uid),
+                orderBy('date', 'desc')
             );
+            const snapshot = await getDocs(q);
 
-            const querySnapshot = await getDocs(q);
-            let bookingsList = [];
-            querySnapshot.forEach((doc) => {
-                const bookingData = { id: doc.id, ...doc.data() };
-                
-                // Apply filters
-                if (filters.status !== 'all' && bookingData.status !== filters.status) {
-                    return;
-                }
-                
-                if (filters.search) {
-                    const searchLower = filters.search.toLowerCase();
-                    if (!bookingData.clientName?.toLowerCase().includes(searchLower) &&
-                        !bookingData.clientEmail?.toLowerCase().includes(searchLower)) {
-                        return;
-                    }
-                }
-                
-                if (filters.startDate) {
-                    const startDate = new Date(filters.startDate);
-                    const bookingDate = bookingData.startTime?.toDate?.() || new Date(bookingData.startTime);
-                    if (bookingDate < startDate) {
-                        return;
-                    }
-                }
-                
-                if (filters.endDate) {
-                    const endDate = new Date(filters.endDate);
-                    endDate.setHours(23, 59, 59, 999);
-                    const bookingDate = bookingData.startTime?.toDate?.() || new Date(bookingData.startTime);
-                    if (bookingDate > endDate) {
-                        return;
-                    }
-                }
-                
-                bookingsList.push(bookingData);
-            });
-            
-            // Sort by startTime
-            bookingsList.sort((a, b) => {
-                const dateA = a.startTime?.toDate?.() || new Date(a.startTime);
-                const dateB = b.startTime?.toDate?.() || new Date(b.startTime);
-                return dateB - dateA;
-            });
-            
-            setBookings(bookingsList);
+            const bookingsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            setBookings(bookingsData);
+            calculateStats(bookingsData);
         } catch (error) {
-            console.error('Error fetching bookings:', error);
+            console.error('Error loading bookings:', error);
+            setMessage('❌ Σφάλμα φόρτωσης ραντεβού');
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchStats = async () => {
-        if (!auth.currentUser) {
-            return;
-        }
+    const calculateStats = (bookingsData) => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-        try {
-            const q = query(
-                collection(db, "bookings"),
-                where("professionalId", "==", auth.currentUser.uid)
-            );
-            const querySnapshot = await getDocs(q);
-            
-            let totalBookings = 0;
-            let upcomingBookings = 0;
-            let monthlyBookings = 0;
-            let cancelledBookings = 0;
-            let monthlyRevenue = 0;
-            
-            const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            
-            querySnapshot.forEach((doc) => {
-                const booking = doc.data();
-                totalBookings++;
-                
-                const bookingDate = booking.startTime?.toDate?.() || new Date(booking.startTime);
-                
-                if (bookingDate >= now) {
-                    upcomingBookings++;
-                }
-                
-                if (bookingDate >= startOfMonth) {
-                    monthlyBookings++;
-                    if (booking.status === 'confirmed' && booking.service?.price) {
-                        monthlyRevenue += booking.service.price;
-                    }
-                }
-                
-                if (booking.status === 'cancelled') {
-                    cancelledBookings++;
-                }
-            });
-            
-            setStats({
-                totalBookings,
-                upcomingBookings,
-                monthlyBookings,
-                cancelledBookings,
-                monthlyRevenue
-            });
-        } catch (error) {
-            console.error('Error fetching stats:', error);
-        }
+        const total = bookingsData.length;
+        
+        const upcoming = bookingsData.filter(b => {
+            const bookingDate = new Date(b.date);
+            return bookingDate >= now && b.status !== 'cancelled';
+        }).length;
+
+        const thisMonth = bookingsData.filter(b => {
+            const bookingDate = new Date(b.date);
+            return bookingDate >= startOfMonth && bookingDate <= endOfMonth && b.status !== 'cancelled';
+        }).length;
+
+        const cancelled = bookingsData.filter(b => b.status === 'cancelled').length;
+
+        const monthlyRevenue = bookingsData
+            .filter(b => {
+                const bookingDate = new Date(b.date);
+                return bookingDate >= startOfMonth && bookingDate <= endOfMonth && b.status !== 'cancelled';
+            })
+            .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+
+        setStats({
+            total,
+            upcoming,
+            thisMonth,
+            cancelled,
+            monthlyRevenue
+        });
     };
 
     const handleCancelBooking = async (bookingId) => {
-        if (!confirm('Are you sure you want to cancel this booking?')) return;
+        if (!confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε αυτό το ραντεβού;')) return;
 
         try {
-            const bookingRef = doc(db, "bookings", bookingId);
+            const bookingRef = doc(db, 'bookings', bookingId);
             await updateDoc(bookingRef, {
                 status: 'cancelled',
-                cancelledAt: new Date()
+                cancelledAt: new Date().toISOString()
             });
 
-            alert('Booking cancelled successfully!');
-            fetchBookings();
-            fetchStats();
+            setMessage('✅ Το ραντεβού ακυρώθηκε επιτυχώς!');
+            loadBookings();
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
             console.error('Error cancelling booking:', error);
-            alert('Network error. Please try again.');
+            setMessage('❌ Σφάλμα ακύρωσης. Δοκιμάστε ξανά.');
         }
+    };
+
+    const getFilteredBookings = () => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        switch (filter) {
+            case 'upcoming':
+                return bookings.filter(b => {
+                    const bookingDate = new Date(b.date);
+                    return bookingDate >= now && b.status !== 'cancelled';
+                });
+            case 'thisMonth':
+                return bookings.filter(b => {
+                    const bookingDate = new Date(b.date);
+                    return bookingDate >= startOfMonth && bookingDate <= endOfMonth;
+                });
+            case 'cancelled':
+                return bookings.filter(b => b.status === 'cancelled');
+            default:
+                return bookings;
+        }
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('el-GR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    };
+
+    const formatTime = (timeString) => {
+        return timeString || 'N/A';
     };
 
     const getStatusBadge = (status) => {
         const styles = {
+            pending: 'bg-yellow-100 text-yellow-800',
             confirmed: 'bg-green-100 text-green-800',
-            cancelled: 'bg-red-100 text-red-800',
-            completed: 'bg-blue-100 text-blue-800',
-            'no-show': 'bg-gray-100 text-gray-800'
+            cancelled: 'bg-red-100 text-red-800'
         };
+
+        const labels = {
+            pending: 'Εκκρεμεί',
+            confirmed: 'Επιβεβαιωμένο',
+            cancelled: 'Ακυρωμένο'
+        };
+
         return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-                {status.toUpperCase()}
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+                {labels[status] || status}
             </span>
         );
     };
 
     if (loading) {
         return (
-            <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading bookings...</p>
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a90e2]"></div>
+                <p className="ml-3 text-gray-600">Φόρτωση ραντεβού...</p>
             </div>
         );
     }
 
+    const filteredBookings = getFilteredBookings();
+
     return (
-        <div className="space-y-6">
-            {/* Statistics Cards */}
-            {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <p className="text-sm text-gray-600">Total Bookings</p>
-                        <p className="text-3xl font-bold text-gray-900">{stats.totalBookings}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <p className="text-sm text-gray-600">Upcoming</p>
-                        <p className="text-3xl font-bold text-blue-600">{stats.upcomingBookings}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <p className="text-sm text-gray-600">This Month</p>
-                        <p className="text-3xl font-bold text-green-600">{stats.monthlyBookings}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <p className="text-sm text-gray-600">Cancelled</p>
-                        <p className="text-3xl font-bold text-red-600">{stats.cancelledBookings}</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <p className="text-sm text-gray-600">Monthly Revenue</p>
-                        <p className="text-3xl font-bold text-purple-600">€{stats.monthlyRevenue}</p>
-                    </div>
+        <div className="max-w-7xl">
+            {/* Message Alert */}
+            {message && (
+                <div className={`mb-6 p-4 rounded-lg animate-fadeIn ${
+                    message.includes('✅') 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                    {message}
                 </div>
             )}
 
-            {/* Filters */}
-            <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-4">Filter Bookings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                            value={filters.status}
-                            onChange={(e) => setFilters({...filters, status: e.target.value})}
-                            className="w-full px-3 py-2 border rounded-md"
-                        >
-                            <option value="all">All</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="completed">Completed</option>
-                        </select>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+                {/* Total Bookings */}
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">📊</span>
+                        <span className="text-3xl font-bold">{stats.total}</span>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                        <input
-                            type="text"
-                            placeholder="Client name or email..."
-                            value={filters.search}
-                            onChange={(e) => setFilters({...filters, search: e.target.value})}
-                            className="w-full px-3 py-2 border rounded-md"
-                        />
+                    <p className="text-sm font-semibold opacity-90">Σύνολο Ραντεβού</p>
+                </div>
+
+                {/* Upcoming */}
+                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">📅</span>
+                        <span className="text-3xl font-bold">{stats.upcoming}</span>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                        <input
-                            type="date"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                            className="w-full px-3 py-2 border rounded-md"
-                        />
+                    <p className="text-sm font-semibold opacity-90">Επερχόμενα</p>
+                </div>
+
+                {/* This Month */}
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">📆</span>
+                        <span className="text-3xl font-bold">{stats.thisMonth}</span>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                        <input
-                            type="date"
-                            value={filters.endDate}
-                            onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                            className="w-full px-3 py-2 border rounded-md"
-                        />
+                    <p className="text-sm font-semibold opacity-90">Αυτόν τον Μήνα</p>
+                </div>
+
+                {/* Cancelled */}
+                <div className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">❌</span>
+                        <span className="text-3xl font-bold">{stats.cancelled}</span>
                     </div>
+                    <p className="text-sm font-semibold opacity-90">Ακυρωμένα</p>
+                </div>
+
+                {/* Monthly Revenue */}
+                <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">💰</span>
+                        <span className="text-2xl font-bold">{stats.monthlyRevenue.toFixed(2)}€</span>
+                    </div>
+                    <p className="text-sm font-semibold opacity-90">Έσοδα Μήνα</p>
                 </div>
             </div>
 
+            {/* Filters */}
+            <div className="flex space-x-2 mb-6">
+                <button
+                    onClick={() => setFilter('all')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        filter === 'all' 
+                            ? 'bg-[#4a90e2] text-white shadow-md' 
+                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[#4a90e2]'
+                    }`}
+                >
+                    Όλα ({bookings.length})
+                </button>
+                <button
+                    onClick={() => setFilter('upcoming')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        filter === 'upcoming' 
+                            ? 'bg-[#4a90e2] text-white shadow-md' 
+                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[#4a90e2]'
+                    }`}
+                >
+                    Επερχόμενα ({stats.upcoming})
+                </button>
+                <button
+                    onClick={() => setFilter('thisMonth')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        filter === 'thisMonth' 
+                            ? 'bg-[#4a90e2] text-white shadow-md' 
+                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[#4a90e2]'
+                    }`}
+                >
+                    Τον Μήνα ({stats.thisMonth})
+                </button>
+                <button
+                    onClick={() => setFilter('cancelled')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        filter === 'cancelled' 
+                            ? 'bg-[#4a90e2] text-white shadow-md' 
+                            : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-[#4a90e2]'
+                    }`}
+                >
+                    Ακυρωμένα ({stats.cancelled})
+                </button>
+            </div>
+
             {/* Bookings Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b">
-                    <h3 className="text-lg font-semibold">Bookings List ({bookings.length})</h3>
+            {filteredBookings.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-6xl mb-4">📅</div>
+                    <p className="text-xl text-gray-600 font-semibold mb-2">
+                        Δεν βρέθηκαν ραντεβού
+                    </p>
+                    <p className="text-gray-500">
+                        {filter === 'all' 
+                            ? 'Δεν έχετε κανένα ραντεβού ακόμα' 
+                            : 'Δεν υπάρχουν ραντεβού για αυτό το φίλτρο'}
+                    </p>
                 </div>
-                {bookings.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">No bookings found</p>
-                    </div>
-                ) : (
+            ) : (
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-[#1a2847] text-white">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Ημερομηνία</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Ώρα</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Πελάτης</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Υπηρεσίες</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Τιμή</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Κατάσταση</th>
+                                    <th className="px-6 py-4 text-center text-sm font-semibold">Ενέργειες</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {bookings.map((booking) => {
-                                    const bookingDate = booking.startTime?.toDate?.() || new Date(booking.startTime);
-                                    return (
-                                        <tr key={booking.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {bookingDate.toLocaleDateString('el-GR', {
-                                                        dateStyle: 'medium'
-                                                    })}
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {bookingDate.toLocaleTimeString('el-GR', {
-                                                        timeStyle: 'short'
-                                                    })}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm font-medium text-gray-900">{booking.clientName}</div>
-                                                <div className="text-sm text-gray-500">{booking.clientEmail}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm text-gray-900">{booking.service?.name || 'N/A'}</div>
-                                                <div className="text-sm text-gray-500">{booking.service?.duration || 0} min</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {getStatusBadge(booking.status)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                {booking.status === 'confirmed' && (
-                                                    <button
-                                                        onClick={() => handleCancelBooking(booking.id)}
-                                                        className="text-red-600 hover:text-red-900 font-medium"
-                                                    >
-                                                        Cancel
-                                                    </button>
+                                {filteredBookings.map((booking) => (
+                                    <tr key={booking.id} className="hover:bg-blue-50 transition-colors">
+                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                            {formatDate(booking.date)}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {formatTime(booking.time)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900">
+                                                    {booking.clientName || 'N/A'}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {booking.clientEmail || booking.clientPhone || ''}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900">
+                                                {Array.isArray(booking.services) ? (
+                                                    booking.services.map((service, idx) => (
+                                                        <div key={idx} className="mb-1">
+                                                            • {service.name || service}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span>{booking.serviceName || 'N/A'}</span>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-semibold text-[#4a90e2]">
+                                            {booking.totalPrice?.toFixed(2) || '0.00'}€
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {getStatusBadge(booking.status)}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {booking.status !== 'cancelled' && (
+                                                <button
+                                                    onClick={() => handleCancelBooking(booking.id)}
+                                                    className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-all"
+                                                >
+                                                    Ακύρωση
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,144 +1,292 @@
-// frontend/components/WorkingHoursManager.js
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../hooks/useAuth';
 
-const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAYS = [
+    { id: 'monday', name: 'Δευτέρα', shortName: 'Δευ' },
+    { id: 'tuesday', name: 'Τρίτη', shortName: 'Τρι' },
+    { id: 'wednesday', name: 'Τετάρτη', shortName: 'Τετ' },
+    { id: 'thursday', name: 'Πέμπτη', shortName: 'Πεμ' },
+    { id: 'friday', name: 'Παρασκευή', shortName: 'Παρ' },
+    { id: 'saturday', name: 'Σάββατο', shortName: 'Σαβ' },
+    { id: 'sunday', name: 'Κυριακή', shortName: 'Κυρ' }
+];
 
 export default function WorkingHoursManager() {
-    const [hours, setHours] = useState(null);
+    const { user } = useAuth();
+    const [schedule, setSchedule] = useState({});
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
+    // Αρχικοποίηση schedule
     useEffect(() => {
-        const fetchUserHours = async () => {
-            if (!auth.currentUser) {
-                setLoading(false);
-                return;
-            }
-
-            setLoading(true);
-            try {
-                const userDocRef = doc(db, "users", auth.currentUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
-                    setHours(userData.workingHours || {
-                        monday: [],
-                        tuesday: [{ start: '09:00', end: '17:00' }],
-                        wednesday: [{ start: '09:00', end: '17:00' }],
-                        thursday: [{ start: '09:00', end: '17:00' }],
-                        friday: [{ start: '09:00', end: '17:00' }],
-                        saturday: [{ start: '10:00', end: '14:00' }],
-                        sunday: []
-                    });
-                } else {
-                    // Initialize with default hours if document doesn't exist
-                    setHours({
-                        monday: [],
-                        tuesday: [{ start: '09:00', end: '17:00' }],
-                        wednesday: [{ start: '09:00', end: '17:00' }],
-                        thursday: [{ start: '09:00', end: '17:00' }],
-                        friday: [{ start: '09:00', end: '17:00' }],
-                        saturday: [{ start: '10:00', end: '14:00' }],
-                        sunday: []
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to fetch working hours", error);
-            }
-            setLoading(false);
-        };
-        fetchUserHours();
+        const initialSchedule = {};
+        DAYS.forEach(day => {
+            initialSchedule[day.id] = {
+                isOpen: false,
+                slots: [
+                    { start: '09:00', end: '14:00' },
+                    { start: '', end: '' }
+                ]
+            };
+        });
+        setSchedule(initialSchedule);
     }, []);
 
-    const handleTimeChange = (day, index, field, value) => {
-        const newHours = JSON.parse(JSON.stringify(hours)); // Deep copy
-        newHours[day][index][field] = value;
-        setHours(newHours);
-    };
+    // Φόρτωση ωραρίου από Firestore
+    useEffect(() => {
+        loadSchedule();
+    }, [user]);
 
-    const handleDayToggle = (day, isChecked) => {
-        const newHours = { ...hours };
-        if (isChecked && newHours[day].length === 0) {
-            newHours[day] = [{ start: '09:00', end: '17:00' }];
-        } else if (!isChecked) {
-            newHours[day] = [];
+    const loadSchedule = async () => {
+        if (!user?.uid) return;
+
+        try {
+            const scheduleRef = doc(db, 'schedules', user.uid);
+            const scheduleSnap = await getDoc(scheduleRef);
+
+            if (scheduleSnap.exists()) {
+                setSchedule(scheduleSnap.data().schedule);
+            }
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            setMessage('❌ Σφάλμα φόρτωσης ωραρίου');
+        } finally {
+            setLoading(false);
         }
-        setHours(newHours);
     };
 
-    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΠΡΟΣΘΗΚΗ ΩΡΑΡΙΟΥ ---
-    const addSlot = (day) => {
-        const newHours = JSON.parse(JSON.stringify(hours));
-        newHours[day].push({ start: '17:00', end: '21:00' }); // Προσθέτει ένα default απογευματινό slot
-        setHours(newHours);
+    // Toggle ημέρα ανοιχτή/κλειστή
+    const toggleDay = (dayId) => {
+        setSchedule(prev => ({
+            ...prev,
+            [dayId]: {
+                ...prev[dayId],
+                isOpen: !prev[dayId].isOpen
+            }
+        }));
     };
 
-    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΑΦΑΙΡΕΣΗ ΩΡΑΡΙΟΥ ---
-    const removeSlot = (day, index) => {
-        const newHours = JSON.parse(JSON.stringify(hours));
-        newHours[day].splice(index, 1); // Αφαιρεί το slot από τη λίστα
-        setHours(newHours);
+    // Αλλαγή time slot
+    const updateSlot = (dayId, slotIndex, field, value) => {
+        setSchedule(prev => {
+            const newSlots = [...prev[dayId].slots];
+            newSlots[slotIndex] = {
+                ...newSlots[slotIndex],
+                [field]: value
+            };
+            return {
+                ...prev,
+                [dayId]: {
+                    ...prev[dayId],
+                    slots: newSlots
+                }
+            };
+        });
     };
 
-    const handleSaveChanges = async () => {
-        if (!auth.currentUser) {
-            setMessage('Error: No user logged in');
+    // Αποθήκευση
+    const handleSave = async () => {
+        setSaving(true);
+        setMessage('');
+
+        // Validation
+        let hasError = false;
+        Object.entries(schedule).forEach(([dayId, dayData]) => {
+            if (dayData.isOpen) {
+                dayData.slots.forEach((slot, index) => {
+                    if (slot.start && slot.end) {
+                        if (slot.start >= slot.end) {
+                            setMessage(`❌ Λάθος ώρες στη ${DAYS.find(d => d.id === dayId).name} (Slot ${index + 1})`);
+                            hasError = true;
+                        }
+                    }
+                });
+            }
+        });
+
+        if (hasError) {
+            setSaving(false);
             return;
         }
 
-        setMessage('Saving...');
         try {
-            const userDocRef = doc(db, "users", auth.currentUser.uid);
-            await updateDoc(userDocRef, { workingHours: hours });
-            setMessage('Working hours saved successfully!');
+            const scheduleRef = doc(db, 'schedules', user.uid);
+            await setDoc(scheduleRef, {
+                userId: user.uid,
+                schedule: schedule,
+                updatedAt: new Date().toISOString()
+            });
+
+            setMessage('✅ Το ωράριο αποθηκεύτηκε επιτυχώς!');
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
-            setMessage('Error saving hours. Please try again.');
-            console.error(error);
+            console.error('Error saving schedule:', error);
+            setMessage('❌ Σφάλμα αποθήκευσης. Δοκιμάστε ξανά.');
+        } finally {
+            setSaving(false);
         }
-        setTimeout(() => setMessage(''), 3000);
     };
 
-    if (loading || !hours) {
-        return <p>Loading working hours...</p>;
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a90e2]"></div>
+                <p className="ml-3 text-gray-600">Φόρτωση ωραρίου...</p>
+            </div>
+        );
     }
 
     return (
-        <div className="w-full max-w-2xl mt-10 p-8 border rounded-lg shadow-lg bg-white">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Working Hours</h2>
+        <div className="max-w-5xl">
+            {/* Message Alert */}
+            {message && (
+                <div className={`mb-6 p-4 rounded-lg animate-fadeIn ${
+                    message.includes('✅') 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                    {message}
+                </div>
+            )}
+
+            {/* Instructions */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                    <strong>💡 Οδηγίες:</strong> Ενεργοποιήστε τις ημέρες που είστε ανοιχτοί και ορίστε τα ωράρια. 
+                    Μπορείτε να προσθέσετε 2 διαφορετικά χρονικά διαστήματα ανά ημέρα (π.χ. πρωί και απόγευμα).
+                </p>
+            </div>
+
+            {/* Schedule Grid */}
             <div className="space-y-4">
-                {daysOfWeek.map(day => (
-                    <div key={day} className="p-4 border rounded-md bg-gray-50">
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="flex items-center gap-3">
-                                <input type="checkbox" checked={hours[day].length > 0} onChange={(e) => handleDayToggle(day, e.target.checked)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"/>
-                                <span className="block text-md font-medium text-gray-700 capitalize">{day}</span>
-                            </label>
-                            {/* --- ΝΕΟ ΚΟΥΜΠΙ '+' --- */}
-                            {hours[day].length > 0 && (
-                                <button onClick={() => addSlot(day)} className="flex items-center justify-center h-6 w-6 bg-blue-500 text-white rounded-full hover:bg-blue-600 text-lg">+</button>
-                            )}
-                        </div>
-                        {/* --- ΑΝΑΒΑΘΜΙΣΜΕΝΗ ΛΟΓΙΚΗ ΓΙΑ ΝΑ ΔΕΙΧΝΕΙ ΠΟΛΛΑΠΛΑ SLOTS --- */}
-                        <div className="space-y-2 mt-2">
-                            {hours[day].map((slot, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                    <input type="time" value={slot.start} onChange={(e) => handleTimeChange(day, index, 'start', e.target.value)} className="p-2 border rounded-md w-32"/>
-                                    <span>-</span>
-                                    <input type="time" value={slot.end} onChange={(e) => handleTimeChange(day, index, 'end', e.target.value)} className="p-2 border rounded-md w-32"/>
-                                    <button onClick={() => removeSlot(day, index)} className="flex items-center justify-center h-6 w-6 bg-red-500 text-white rounded-full hover:bg-red-600 text-lg">×</button>
+                {DAYS.map((day) => (
+                    <div
+                        key={day.id}
+                        className={`bg-white rounded-lg border-2 transition-all ${
+                            schedule[day.id]?.isOpen 
+                                ? 'border-[#4a90e2] shadow-md' 
+                                : 'border-gray-200'
+                        }`}
+                    >
+                        <div className="p-6">
+                            {/* Day Header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-4">
+                                    {/* Toggle Switch */}
+                                    <button
+                                        onClick={() => toggleDay(day.id)}
+                                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                                            schedule[day.id]?.isOpen 
+                                                ? 'bg-[#4a90e2]' 
+                                                : 'bg-gray-300'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                                                schedule[day.id]?.isOpen 
+                                                    ? 'translate-x-7' 
+                                                    : 'translate-x-1'
+                                            }`}
+                                        />
+                                    </button>
+
+                                    {/* Day Name */}
+                                    <h3 className={`text-lg font-bold ${
+                                        schedule[day.id]?.isOpen 
+                                            ? 'text-[#1a2847]' 
+                                            : 'text-gray-400'
+                                    }`}>
+                                        {day.name}
+                                    </h3>
                                 </div>
-                            ))}
+
+                                {/* Status Badge */}
+                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                    schedule[day.id]?.isOpen 
+                                        ? 'bg-green-100 text-green-700' 
+                                        : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                    {schedule[day.id]?.isOpen ? '✓ Ανοιχτά' : '✕ Κλειστά'}
+                                </span>
+                            </div>
+
+                            {/* Time Slots */}
+                            {schedule[day.id]?.isOpen && (
+                                <div className="space-y-3 pl-18">
+                                    {schedule[day.id].slots.map((slot, index) => (
+                                        <div key={index} className="flex items-center space-x-3">
+                                            <span className="text-sm font-semibold text-gray-600 w-20">
+                                                {index === 0 ? 'Πρώτο:' : 'Δεύτερο:'}
+                                            </span>
+                                            
+                                            <input
+                                                type="time"
+                                                value={slot.start}
+                                                onChange={(e) => updateSlot(day.id, index, 'start', e.target.value)}
+                                                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                                            />
+                                            
+                                            <span className="text-gray-500 font-bold">—</span>
+                                            
+                                            <input
+                                                type="time"
+                                                value={slot.end}
+                                                onChange={(e) => updateSlot(day.id, index, 'end', e.target.value)}
+                                                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                                            />
+
+                                            {slot.start && slot.end && (
+                                                <span className="text-sm text-gray-500">
+                                                    ({Math.round((new Date(`2000-01-01 ${slot.end}`) - new Date(`2000-01-01 ${slot.start}`)) / 60000)} λεπτά)
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
             </div>
-            <button onClick={handleSaveChanges} className="mt-6 w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 transition">Save Changes</button>
-            {message && <p className="text-center mt-4 text-gray-600">{message}</p>}
+
+            {/* Save Button */}
+            <div className="flex justify-end mt-8 pt-6 border-t border-gray-200">
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className={`flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all shadow-md hover:shadow-lg ${
+                        saving 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-[#4a90e2] hover:bg-[#1a2847]'
+                    }`}
+                >
+                    {saving ? (
+                        <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            <span>Αποθήκευση...</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>💾</span>
+                            <span>Αποθήκευση Ωραρίου</span>
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {/* Summary */}
+            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                    <strong>📊 Σύνοψη:</strong> {
+                        Object.values(schedule).filter(day => day.isOpen).length
+                    } ημέρες ανοιχτές | Αφήστε κενό το 2ο slot αν δεν το χρειάζεστε
+                </p>
+            </div>
         </div>
     );
 }

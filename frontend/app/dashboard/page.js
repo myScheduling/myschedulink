@@ -7,6 +7,8 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import Image from 'next/image';
 import ProfileManager from '../../components/ProfileManager';
 import ServiceManager from '../../components/ServiceManager';
+import WorkingHoursManager from '../../components/WorkingHoursManager';
+import BookingsManager from '../../components/BookingsManager';
 
 export default function DashboardPage() {
     const [user, setUser] = useState(null);
@@ -141,13 +143,13 @@ export default function DashboardPage() {
                     {activeTab === 'schedule' && (
                         <div>
                             <h2 className="text-2xl font-bold text-[#1a2847] mb-6">Ωράριο Λειτουργίας</h2>
-                            <p className="text-gray-600">Το component για το ωράριο θα προστεθεί εδώ...</p>
+                            <WorkingHoursManager />
                         </div>
                     )}
                     {activeTab === 'bookings' && (
                         <div>
                             <h2 className="text-2xl font-bold text-[#1a2847] mb-6">Τα Ραντεβού μου</h2>
-                            <p className="text-gray-600">Η λίστα με τα ραντεβού θα εμφανιστεί εδώ...</p>
+                            <BookingsManager />
                         </div>
                     )}
                 </div>

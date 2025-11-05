@@ -1,109 +1,195 @@
-// frontend/components/ProfileManager.js
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-export default function ProfileManager() {
+export default function ProfileManager({ user }) {
     const [profile, setProfile] = useState({
-        displayName: '',
         businessName: '',
-        address: '',
-        phone: ''
+        phone: '',
+        address: ''
     });
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
+    // Φόρτωση profile από Firestore
     useEffect(() => {
-        const fetchProfile = async () => {
-            if (!auth.currentUser) {
-                setLoading(false);
-                return;
-            }
-
-            setLoading(true);
+        async function loadProfile() {
+            if (!user?.uid) return;
+            
             try {
-                const userDocRef = doc(db, "users", auth.currentUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
                 
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
+                if (userSnap.exists()) {
+                    const data = userSnap.data();
                     setProfile({
-                        displayName: userData.displayName || '',
-                        businessName: userData.businessName || '',
-                        address: userData.address || '',
-                        phone: userData.phone || ''
+                        businessName: data.businessName || '',
+                        phone: data.phone || '',
+                        address: data.address || ''
                     });
                 }
             } catch (error) {
-                console.error("Failed to fetch profile", error);
+                console.error('Error loading profile:', error);
+                setMessage('Σφάλμα φόρτωσης προφίλ');
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
-        };
-        fetchProfile();
-    }, []);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setProfile(prevProfile => ({ ...prevProfile, [name]: value }));
-    };
-
-    const handleSaveProfile = async (e) => {
-        e.preventDefault();
-        
-        if (!auth.currentUser) {
-            setMessage('Error: No user logged in');
-            return;
         }
 
-        setMessage('Saving...');
+        loadProfile();
+    }, [user]);
+
+    // Αποθήκευση profile
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setMessage('');
+
         try {
-            const userDocRef = doc(db, "users", auth.currentUser.uid);
-            await setDoc(userDocRef, {
-                displayName: profile.displayName,
-                businessName: profile.businessName,
-                address: profile.address,
-                phone: profile.phone
+            const userRef = doc(db, 'users', user.uid);
+            await setDoc(userRef, {
+                displayName: user.displayName,
+                email: user.email,
+                ...profile,
+                updatedAt: new Date().toISOString()
             }, { merge: true });
 
-            setMessage('Profile saved successfully!');
+            setMessage('✅ Το προφίλ αποθηκεύτηκε επιτυχώς!');
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
-            setMessage('Error saving profile. Please try again.');
-            console.error(error);
+            console.error('Error saving profile:', error);
+            setMessage('❌ Σφάλμα αποθήκευσης. Δοκιμάστε ξανά.');
+        } finally {
+            setSaving(false);
         }
-        setTimeout(() => setMessage(''), 3000);
     };
 
     if (loading) {
-        return <p>Loading profile...</p>;
+        return (
+            <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4a90e2]"></div>
+                <p className="ml-3 text-gray-600">Φόρτωση προφίλ...</p>
+            </div>
+        );
     }
 
     return (
-        <div className="w-full max-w-2xl mt-10 p-8 border rounded-lg shadow-lg bg-white">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Edit Your Profile</h2>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                    <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">Display Name</label>
-                    <input type="text" name="displayName" id="displayName" value={profile.displayName} onChange={handleInputChange} className="mt-1 block w-full p-2 border rounded-md"/>
+        <div className="max-w-3xl">
+            {/* Message Alert */}
+            {message && (
+                <div className={`mb-6 p-4 rounded-lg animate-fadeIn ${
+                    message.includes('✅') 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                    {message}
                 </div>
-                <div>
-                    <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">Business Name</label>
-                    <input type="text" name="businessName" id="businessName" value={profile.businessName} onChange={handleInputChange} className="mt-1 block w-full p-2 border rounded-md"/>
+            )}
+
+            <form onSubmit={handleSave} className="space-y-6">
+                {/* User Info Display */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-[#4a90e2] rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                            {user.displayName?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-600">Συνδεδεμένος ως:</p>
+                            <p className="text-lg font-semibold text-[#1a2847]">{user.displayName}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Business Name */}
                 <div>
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
-                    <input type="text" name="address" id="address" value={profile.address} onChange={handleInputChange} className="mt-1 block w-full p-2 border rounded-md"/>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Όνομα Καταστήματος *
+                    </label>
+                    <input
+                        type="text"
+                        value={profile.businessName}
+                        onChange={(e) => setProfile({...profile, businessName: e.target.value})}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                        placeholder="π.χ. Barber Shop Αθήνα"
+                        required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                        Το όνομα που θα βλέπουν οι πελάτες σας
+                    </p>
                 </div>
+
+                {/* Phone */}
                 <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
-                    <input type="tel" name="phone" id="phone" value={profile.phone} onChange={handleInputChange} className="mt-1 block w-full p-2 border rounded-md"/>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Τηλέφωνο *
+                    </label>
+                    <input
+                        type="tel"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                        placeholder="π.χ. 210 1234567"
+                        required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                        Για επικοινωνία με τους πελάτες σας
+                    </p>
                 </div>
-                <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition">
-                    Save Profile
-                </button>
-                {message && <p className="text-center mt-4 text-gray-600">{message}</p>}
+
+                {/* Address */}
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Διεύθυνση *
+                    </label>
+                    <textarea
+                        value={profile.address}
+                        onChange={(e) => setProfile({...profile, address: e.target.value})}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                        placeholder="π.χ. Ακαδημίας 123, Αθήνα 10678"
+                        rows="3"
+                        required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                        Η πλήρης διεύθυνση του καταστήματός σας
+                    </p>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className={`flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all shadow-md hover:shadow-lg ${
+                            saving 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-[#4a90e2] hover:bg-[#1a2847]'
+                        }`}
+                    >
+                        {saving ? (
+                            <>
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <span>Αποθήκευση...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>💾</span>
+                                <span>Αποθήκευση Αλλαγών</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </form>
+
+            {/* Info Note */}
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                    <strong>💡 Σημείωση:</strong> Αυτές οι πληροφορίες θα εμφανίζονται στη δημόσια σελίδα κράτησης ραντεβού.
+                </p>
+            </div>
         </div>
     );
 }
