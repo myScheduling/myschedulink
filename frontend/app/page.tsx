@@ -7,7 +7,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 
-// Type για Business
+// Type για Business (Με το logoUrl)
 interface Business {
     id: string;
     businessName?: string;
@@ -15,7 +15,7 @@ interface Business {
     address?: string;
     phone?: string;
     email?: string;
-    logoUrl?: string; // 👈 1. ΠΡΟΣΘΕΣΑΜΕ ΤΟ logoUrl ΕΔΩ
+    logoUrl?: string; // 👈 Το πεδίο για το λογότυπο
 }
 
 export default function HomePage() {
@@ -31,13 +31,14 @@ export default function HomePage() {
     const loadBusinesses = async () => {
         try {
             const usersRef = collection(db, 'users');
+            // Φέρνουμε μόνο χρήστες που έχουν ορίσει businessName
             const q = query(usersRef, where('businessName', '!=', null));
             const snapshot = await getDocs(q);
             
             const businessList: Business[] = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...(doc.data() as Omit<Business, 'id'>)
-            })).filter(b => b.businessName); // Μόνο με business name
+            })).filter(b => b.businessName); 
             
             setBusinesses(businessList);
         } catch (error) {
@@ -54,7 +55,7 @@ export default function HomePage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-            {/* Navigation (Ο κώδικάς σου παραμένει ίδιος) */}
+            {/* Navigation (Όπως ήταν) */}
             <nav className="bg-white shadow-md border-b-2 border-[#4a90e2]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
@@ -86,9 +87,29 @@ export default function HomePage() {
                 </div>
             </nav>
 
-            {/* Hero Section (Ο κώδικάς σου παραμένει ίδιος) */}
+            {/* Hero Section (Όπως ήταν) */}
             <section className="py-20 px-4">
-                {/* ... (όλη η hero section παραμένει ίδια) ... */}
+                <div className="max-w-7xl mx-auto text-center">
+                    <h1 className="text-5xl md:text-6xl font-bold text-[#1a2847] mb-6">
+                        Διαχείριση Ραντεβού
+                        <br />
+                        <span className="text-[#4a90e2]">Εύκολα & Γρήγορα</span>
+                    </h1>
+                    <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                        Η πλατφόρμα που συνδέει επαγγελματίες με πελάτες. 
+                        Κλείσε το επόμενο σου ραντεβού online σε λίγα δευτερόλεπτα!
+                    </p>
+                    
+                    {/* CTA Buttons (Όπως ήταν) */}
+                    <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+                         {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
+                    </div>
+
+                    {/* Features (Όπως ήταν) */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-16">
+                         {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
+                    </div>
+                </div>
             </section>
 
             {/* Businesses Section */}
@@ -103,81 +124,83 @@ export default function HomePage() {
                         </p>
                     </div>
 
-                    {/* Search Bar (Ο κώδικάς σου παραμένει ίδιος) */}
+                    {/* Search Bar (Όπως ήταν) */}
                     <div className="max-w-2xl mx-auto mb-12">
-                        {/* ... (το search bar παραμένει ίδιο) ... */}
+                         {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
                     </div>
 
                     {/* Business Cards */}
                     {loading ? (
                         <div className="flex justify-center items-center py-20">
-                            {/* ... (το loading spinner παραμένει ίδιο) ... */}
+                             {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
                         </div>
                     ) : filteredBusinesses.length === 0 ? (
                         <div className="text-center py-20">
-                            {/* ... (το "Δεν βρέθηκαν" παραμένει ίδιο) ... */}
+                             {/* ... (ο κώδικάς σου παραμένει ίδιος, για να φαίνεται ότι δεν υπάρχουν ακόμα μαγαζιά) ... */}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            
+                            {/* 🚀 ΕΔΩ ΕΙΝΑΙ Η ΑΛΛΑΓΗ ΠΟΥ ΖΗΤΗΣΕΣ 🚀 */}
                             {filteredBusinesses.map((business) => (
                                 <Link
                                     key={business.id}
                                     href={`/booking/${business.id}`}
-                                    className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-[#4a90e2] hover:shadow-xl transition-all transform hover:-translate-y-2 cursor-pointer"
+                                    className="bg-white border-2 border-gray-200 rounded-lg shadow-lg hover:border-[#4a90e2] hover:shadow-xl transition-all transform hover:-translate-y-2 cursor-pointer flex flex-col overflow-hidden"
                                 >
-                                    {/* Business Card */}
-                                    <div className="flex items-start space-x-4">
-                                        <div className="flex-shrink-0">
-                                        
-                                            {/* 🚀 2. ΑΛΛΑΞΑΜΕ ΑΥΤΟ ΤΟ DIV ΜΕ IMG 🚀 */}
-                                            <img
-                                                src={business.logoUrl || `https://ui-avatars.com/api/?name=${business.businessName?.charAt(0).toUpperCase()}&background=4a90e2&color=fff&size=80`}
-                                                alt={`${business.businessName} logo`}
-                                                className="w-16 h-16 rounded-lg object-cover border-2 border-gray-200"
-                                            />
-                                            {/* 🚀 ΤΕΛΟΣ ΑΛΛΑΓΗΣ 🚀 */}
-
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-xl font-bold text-[#1a2847] mb-2">
-                                                {business.businessName}
-                                            </h3>
-                                            <p className="text-sm text-gray-600 mb-1">
-                                                👤 {business.displayName}
-                                            </p>
-                                            {business.address && (
-                                                <p className="text-sm text-gray-600 mb-1">
-                                                    📍 {business.address}
-                                                </p>
-                                            )}
-                                            {business.phone && (
-                                                <p className="text-sm text-gray-600">
-                                                    📞 {business.phone}
-                                                </p>
-                                            )}
-                                        </div>
+                                    {/* 1. ΟΡΘΟΓΩΝΙΟ LOGO (Πάνω) */}
+                                    {/* aspect-video είναι 16:9. Μπορείς να το αλλάξεις σε aspect-square αν θες τετράγωνο */}
+                                    <div className="aspect-video w-full overflow-hidden border-b-2 border-gray-100"> 
+                                        <img
+                                            src={business.logoUrl || `https://via.placeholder.com/400x225.png?text=${business.businessName}`}
+                                            alt={`${business.businessName} logo`}
+                                            className="w-full h-full object-cover" // object-cover για να γεμίζει όμορφα
+                                        />
                                     </div>
-                                    
-                                    <div className="mt-4 pt-4 border-t border-gray-200">
-                                        <span className="text-[#4a90e2] font-semibold hover:text-[#1a2847] transition-colors">
-                                            Κλείσε Ραντεβού →
-                                        </span>
+
+                                    {/* 2. ΠΛΗΡΟΦΟΡΙΕΣ (Κάτω) */}
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <h3 className="text-xl font-bold text-[#1a2847] mb-2">
+                                            {business.businessName}
+                                        </h3>
+                                        <p className="text-sm text-gray-600 mb-1">
+                                            👤 {business.displayName}
+                                        </p>
+                                        {business.address && (
+                                            <p className="text-sm text-gray-600 mb-1">
+                                                📍 {business.address}
+                                            </p>
+                                        )}
+                                        {business.phone && (
+                                            <p className="text-sm text-gray-600">
+                                                📞 {business.phone}
+                                            </p>
+                                        )}
+                                        
+                                        {/* 3. LINK (Τέρμα κάτω) */}
+                                        <div className="mt-auto pt-4 border-t border-gray-200 mt-4"> 
+                                            <span className="text-[#4a90e2] font-semibold hover:text-[#1a2847] transition-colors">
+                                                Κλείσε Ραντεβού →
+                                            </span>
+                                        </div>
                                     </div>
                                 </Link>
                             ))}
+                            {/* 🚀 ΤΕΛΟΣ ΑΛΛΑΓΗΣ 🚀 */}
+
                         </div>
                     )}
                 </div>
             </section>
 
-            {/* CTA Section (Ο κώδικάς σου παραμένει ίδιος) */}
+            {/* CTA Section (Όπως ήταν) */}
             <section className="py-20 px-4 bg-gradient-to-r from-[#4a90e2] to-[#1a2847] text-white">
-                {/* ... (το CTA section παραμένει ίδιο) ... */}
+                 {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
             </section>
 
-            {/* Footer (Ο κώδικάς σου παραμένει ίδιος) */}
+            {/* Footer (Όπως ήταν) */}
             <footer className="bg-[#1a2847] text-white py-8">
-                {/* ... (το footer παραμένει ίδιο) ... */}
+                 {/* ... (ο κώδικάς σου παραμένει ίδιος) ... */}
             </footer>
         </div>
     );
