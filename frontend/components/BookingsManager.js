@@ -195,48 +195,48 @@ export default function BookingsManager() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
                 {/* Total Bookings */}
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                <div className="bg-white border-2 border-blue-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-3xl">📊</span>
-                        <span className="text-3xl font-bold">{stats.total}</span>
+                        <span className="text-3xl font-bold text-blue-600">{stats.total}</span>
                     </div>
-                    <p className="text-sm font-semibold opacity-90">Σύνολο Ραντεβού</p>
+                    <p className="text-sm font-semibold text-gray-800">Σύνολο Ραντεβού</p>
                 </div>
 
                 {/* Upcoming */}
-                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                <div className="bg-white border-2 border-green-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-3xl">📅</span>
-                        <span className="text-3xl font-bold">{stats.upcoming}</span>
+                        <span className="text-3xl font-bold text-green-600">{stats.upcoming}</span>
                     </div>
-                    <p className="text-sm font-semibold opacity-90">Επερχόμενα</p>
+                    <p className="text-sm font-semibold text-gray-800">Επερχόμενα</p>
                 </div>
 
                 {/* This Month */}
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                <div className="bg-white border-2 border-purple-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-3xl">📆</span>
-                        <span className="text-3xl font-bold">{stats.thisMonth}</span>
+                        <span className="text-3xl font-bold text-purple-600">{stats.thisMonth}</span>
                     </div>
-                    <p className="text-sm font-semibold opacity-90">Αυτόν τον Μήνα</p>
+                    <p className="text-sm font-semibold text-gray-800">Αυτόν τον Μήνα</p>
                 </div>
 
                 {/* Cancelled */}
-                <div className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-lg shadow-lg">
+                <div className="bg-white border-2 border-red-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-3xl">❌</span>
-                        <span className="text-3xl font-bold">{stats.cancelled}</span>
+                        <span className="text-3xl font-bold text-red-600">{stats.cancelled}</span>
                     </div>
-                    <p className="text-sm font-semibold opacity-90">Ακυρωμένα</p>
+                    <p className="text-sm font-semibold text-gray-800">Ακυρωμένα</p>
                 </div>
 
                 {/* Monthly Revenue */}
-                <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-6 rounded-lg shadow-lg">
+                <div className="bg-white border-2 border-yellow-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-3xl">💰</span>
-                        <span className="text-2xl font-bold">{stats.monthlyRevenue.toFixed(2)}€</span>
+                        <span className="text-2xl font-bold text-yellow-600">{stats.monthlyRevenue.toFixed(2)}€</span>
                     </div>
-                    <p className="text-sm font-semibold opacity-90">Έσοδα Μήνα</p>
+                    <p className="text-sm font-semibold text-gray-800">Έσοδα Μήνα</p>
                 </div>
             </div>
 
