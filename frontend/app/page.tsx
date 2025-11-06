@@ -1,83 +1,261 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '../firebase';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import { db } from '../firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function HomePage() {
+    const [businesses, setBusinesses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
     const router = useRouter();
 
     useEffect(() => {
-        // Αν ο χρήστης είναι ήδη συνδεδεμένος, πήγαινέ τον στο dashboard
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                router.push('/dashboard');
-            }
-        });
-        return () => unsubscribe();
-    }, [router]);
+        loadBusinesses();
+    }, []);
 
-    const handleGoogleLogin = async () => {
+    const loadBusinesses = async () => {
         try {
-            const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            // Το onAuthStateChanged θα κάνει redirect αυτόματα
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('businessName', '!=', null));
+            const snapshot = await getDocs(q);
+            
+            const businessList = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).filter(b => b.businessName); // Μόνο με business name
+            
+            setBusinesses(businessList);
         } catch (error) {
-            console.error("Login Error:", error);
-            alert("Σφάλμα κατά τη σύνδεση. Παρακαλώ δοκιμάστε ξανά.");
+            console.error('Error loading businesses:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-            <div className="text-center space-y-8 px-4">
-                {/* Logo */}
-                <div className="flex justify-center mb-8">
-                    <Image 
-                        src="/logo.png" 
-                        alt="MySchedulink.gr Logo" 
-                        width={300} 
-                        height={120}
-                        priority
-                        className="drop-shadow-lg"
-                    />
-                </div>
+    const filteredBusinesses = businesses.filter(b =>
+        b.businessName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        b.address?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-                {/* Welcome Message */}
-                <div className="space-y-4">
-                    <h1 className="text-5xl font-bold text-[#1a2847]">
-                        Καλώς Ήρθες
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+            {/* Navigation */}
+            <nav className="bg-white shadow-md border-b-2 border-[#4a90e2]">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center py-4">
+                        <div className="flex items-center space-x-3">
+                            <Image 
+                                src="/logo.png" 
+                                alt="MySchedulink.gr" 
+                                width={180} 
+                                height={60}
+                                className="cursor-pointer"
+                                onClick={() => router.push('/')}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <Link 
+                                href="/login"
+                                className="px-6 py-2 text-[#1a2847] font-semibold hover:text-[#4a90e2] transition-colors"
+                            >
+                                Σύνδεση
+                            </Link>
+                            <Link
+                                href="/login"
+                                className="px-6 py-3 bg-[#4a90e2] text-white rounded-lg font-semibold hover:bg-[#1a2847] transition-all shadow-md hover:shadow-lg"
+                            >
+                                🚀 Ξεκίνα Τώρα
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Hero Section */}
+            <section className="py-20 px-4">
+                <div className="max-w-7xl mx-auto text-center">
+                    <h1 className="text-5xl md:text-6xl font-bold text-[#1a2847] mb-6">
+                        Διαχείριση Ραντεβού
+                        <br />
+                        <span className="text-[#4a90e2]">Εύκολα & Γρήγορα</span>
                     </h1>
-                    <p className="text-xl text-gray-600 max-w-md mx-auto">
-                        Διαχειρίσου τα ραντεβού σου εύκολα και γρήγορα
+                    <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                        Η πλατφόρμα που συνδέει επαγγελματίες με πελάτες. 
+                        Κλείσε το επόμενο σου ραντεβού online σε λίγα δευτερόλεπτα!
+                    </p>
+                    
+                    {/* CTA Buttons */}
+                    <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+                        <Link
+                            href="/login"
+                            className="px-8 py-4 bg-[#4a90e2] text-white rounded-lg font-bold text-lg hover:bg-[#1a2847] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                        >
+                            🚀 Ξεκίνα Δωρεάν
+                        </Link>
+                        <button
+                            onClick={() => document.getElementById('businesses')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="px-8 py-4 bg-white text-[#1a2847] border-2 border-[#4a90e2] rounded-lg font-bold text-lg hover:bg-blue-50 transition-all shadow-lg"
+                        >
+                            📋 Δες Επιχειρήσεις
+                        </button>
+                    </div>
+
+                    {/* Features */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-16">
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
+                            <div className="text-4xl mb-3">📅</div>
+                            <h3 className="font-bold text-lg text-[#1a2847] mb-2">Online Κρατήσεις</h3>
+                            <p className="text-gray-600 text-sm">Κλείσε ραντεβού 24/7 από οπουδήποτε</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
+                            <div className="text-4xl mb-3">⏰</div>
+                            <h3 className="font-bold text-lg text-[#1a2847] mb-2">Διαχείριση Ωραρίου</h3>
+                            <p className="text-gray-600 text-sm">Έλεγχος διαθεσιμότητας σε πραγματικό χρόνο</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
+                            <div className="text-4xl mb-3">📧</div>
+                            <h3 className="font-bold text-lg text-[#1a2847] mb-2">Ειδοποιήσεις</h3>
+                            <p className="text-gray-600 text-sm">Αυτόματα emails επιβεβαίωσης</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
+                            <div className="text-4xl mb-3">📊</div>
+                            <h3 className="font-bold text-lg text-[#1a2847] mb-2">Analytics</h3>
+                            <p className="text-gray-600 text-sm">Στατιστικά και αναφορές</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Businesses Section */}
+            <section id="businesses" className="py-16 px-4 bg-white">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-[#1a2847] mb-4">
+                            Επιχειρήσεις που μας Εμπιστεύονται
+                        </h2>
+                        <p className="text-lg text-gray-600">
+                            Κλείσε το επόμενο σου ραντεβού με μια κλικ
+                        </p>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="max-w-2xl mx-auto mb-12">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="🔍 Αναζήτηση επιχείρησης ή περιοχής..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full px-6 py-4 border-2 border-gray-300 rounded-lg text-lg focus:border-[#4a90e2] focus:ring-2 focus:ring-[#4a90e2] focus:ring-opacity-20 transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Business Cards */}
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#4a90e2]"></div>
+                            <p className="ml-4 text-lg text-gray-600">Φόρτωση επιχειρήσεων...</p>
+                        </div>
+                    ) : filteredBusinesses.length === 0 ? (
+                        <div className="text-center py-20">
+                            <div className="text-6xl mb-4">🔍</div>
+                            <h3 className="text-2xl font-bold text-gray-700 mb-2">
+                                {searchQuery ? 'Δεν βρέθηκαν αποτελέσματα' : 'Δεν υπάρχουν επιχειρήσεις ακόμα'}
+                            </h3>
+                            <p className="text-gray-600">
+                                {searchQuery ? 'Δοκίμασε διαφορετική αναζήτηση' : 'Γίνε ο πρώτος που θα προσθέσει την επιχείρησή του!'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredBusinesses.map((business) => (
+                                <Link
+                                    key={business.id}
+                                    href={`/booking/${business.id}`}
+                                    className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-[#4a90e2] hover:shadow-xl transition-all transform hover:-translate-y-2 cursor-pointer"
+                                >
+                                    {/* Business Card */}
+                                    <div className="flex items-start space-x-4">
+                                        <div className="flex-shrink-0">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-[#4a90e2] to-[#1a2847] rounded-lg flex items-center justify-center text-white text-2xl font-bold">
+                                                {business.businessName?.charAt(0).toUpperCase()}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-xl font-bold text-[#1a2847] mb-2">
+                                                {business.businessName}
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mb-1">
+                                                👤 {business.displayName}
+                                            </p>
+                                            {business.address && (
+                                                <p className="text-sm text-gray-600 mb-1">
+                                                    📍 {business.address}
+                                                </p>
+                                            )}
+                                            {business.phone && (
+                                                <p className="text-sm text-gray-600">
+                                                    📞 {business.phone}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <span className="text-[#4a90e2] font-semibold hover:text-[#1a2847] transition-colors">
+                                            Κλείσε Ραντεβού →
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* CTA Section */}
+            <section className="py-20 px-4 bg-gradient-to-r from-[#4a90e2] to-[#1a2847] text-white">
+                <div className="max-w-4xl mx-auto text-center">
+                    <h2 className="text-4xl font-bold mb-6">
+                        Έτοιμος να Ξεκινήσεις;
+                    </h2>
+                    <p className="text-xl mb-8 opacity-90">
+                        Εγγραφή δωρεάν και ξεκίνα να δέχεσαι online ραντεβού σήμερα!
+                    </p>
+                    <Link
+                        href="/login"
+                        className="inline-block px-10 py-4 bg-white text-[#1a2847] rounded-lg font-bold text-lg hover:bg-gray-100 transition-all shadow-xl transform hover:-translate-y-1"
+                    >
+                        🚀 Ξεκίνα Δωρεάν
+                    </Link>
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="bg-[#1a2847] text-white py-8">
+                <div className="max-w-7xl mx-auto px-4 text-center">
+                    <div className="mb-4">
+                        <Image 
+                            src="/logo.png" 
+                            alt="MySchedulink.gr" 
+                            width={150} 
+                            height={50}
+                            className="mx-auto opacity-80"
+                        />
+                    </div>
+                    <p className="text-gray-400">
+                        © 2024 MySchedulink.gr - Διαχείριση Ραντεβού
+                    </p>
+                    <p className="text-gray-500 text-sm mt-2">
+                        Made with ❤️ in Greece
                     </p>
                 </div>
-
-                {/* Google Login Button */}
-                <div className="pt-6">
-                    <button
-                        onClick={handleGoogleLogin}
-                        className="group relative inline-flex items-center justify-center px-8 py-4 bg-white border-2 border-gray-300 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:border-[#4a90e2]"
-                    >
-                        <svg className="w-6 h-6 mr-3" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        <span className="text-lg font-medium text-gray-700 group-hover:text-[#1a2847] transition-colors">
-                            Σύνδεση με Google
-                        </span>
-                    </button>
-                </div>
-
-                {/* Footer */}
-                <p className="text-sm text-gray-500 pt-8">
-                    Συνδεθείτε για να αποκτήσετε πρόσβαση στο dashboard σας
-                </p>
-            </div>
+            </footer>
         </div>
     );
 }
