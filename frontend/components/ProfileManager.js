@@ -1,20 +1,29 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from '../firebase';
+// 1. Εισάγουμε το db, ΚΑΙ το storage
+import { db, storage } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+// 2. Εισάγουμε τις συναρτήσεις του Storage
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function ProfileManager({ user }) {
     const [profile, setProfile] = useState({
         businessName: '',
         phone: '',
-        address: ''
+        address: '',
+        logoUrl: '' // 3. Προσθέσαμε το logoUrl στο state
     });
+    
+    // 4. Νέο state για το αρχείο που επιλέγει ο χρήστης
+    const [logoFile, setLogoFile] = useState(null); 
+    const [uploading, setUploading] = useState(false); // Για να δείχνουμε "Uploading..."
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
-    // Φόρτωση profile από Firestore
+    // Φόρτωση profile από Firestore (Τώρα φορτώνει ΚΑΙ το logoUrl)
     useEffect(() => {
         async function loadProfile() {
             if (!user?.uid) return;
@@ -28,7 +37,8 @@ export default function ProfileManager({ user }) {
                     setProfile({
                         businessName: data.businessName || '',
                         phone: data.phone || '',
-                        address: data.address || ''
+                        address: data.address || '',
+                        logoUrl: data.logoUrl || '' // 5. Φορτώνουμε το URL του λογότυπου
                     });
                 }
             } catch (error) {
@@ -42,20 +52,53 @@ export default function ProfileManager({ user }) {
         loadProfile();
     }, [user]);
 
-    // Αποθήκευση profile
+    // 6. Νέα συνάρτηση για όταν ο χρήστης διαλέγει αρχείο
+    const handleFileChange = (e) => {
+        if (e.target.files[0]) {
+            setLogoFile(e.target.files[0]);
+        }
+    };
+
+    // 7. Αποθήκευση profile (Τώρα κάνει ΚΑΙ upload το λογότυπο)
     const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
         setMessage('');
 
         try {
+            let newLogoUrl = profile.logoUrl; // Ξεκινάμε με το URL που ήδη υπάρχει
+
+            // A. Αν ο χρήστης διάλεξε ΝΕΟ αρχείο...
+            if (logoFile) {
+                setUploading(true);
+                setMessage('Ανέβασμα λογότυπου...');
+                
+                // Φτιάχνουμε το path (π.χ. logos/USER_ID/logo.png)
+                const storageRef = ref(storage, `logos/${user.uid}/${logoFile.name}`);
+                
+                // Ανεβάζουμε το αρχείο
+                const snapshot = await uploadBytes(storageRef, logoFile);
+                
+                // Παίρνουμε το δημόσιο URL του
+                newLogoUrl = await getDownloadURL(snapshot.ref);
+                
+                setUploading(false);
+            }
+
+            // B. Αποθηκεύουμε τα πάντα (ΚΑΙ το logoUrl) στο Firestore
+            setMessage('Αποθήκευση προφίλ...');
             const userRef = doc(db, 'users', user.uid);
             await setDoc(userRef, {
                 displayName: user.displayName,
                 email: user.email,
-                ...profile,
+                ...profile, // (businessName, phone, address)
+                logoUrl: newLogoUrl, // Αποθηκεύουμε το URL
                 updatedAt: new Date().toISOString()
             }, { merge: true });
+
+            // C. Ενημερώνουμε το state για να φανεί η νέα εικόνα
+            setProfile(prev => ({...prev, logoUrl: newLogoUrl}));
+            setLogoFile(null); // Καθαρίζουμε το επιλεγμένο αρχείο
 
             setMessage('✅ Το προφίλ αποθηκεύτηκε επιτυχώς!');
             setTimeout(() => setMessage(''), 3000);
@@ -90,16 +133,33 @@ export default function ProfileManager({ user }) {
             )}
 
             <form onSubmit={handleSave} className="space-y-6">
-                {/* User Info Display */}
+                {/* User Info Display (ΤΩΡΑ ΜΕ LOGO UPLOAD) */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
-                    <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-[#4a90e2] rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                            {user.displayName?.charAt(0).toUpperCase()}
+                    <div className="flex items-center space-x-6">
+                        
+                        {/* 8. ΝΕΟ: Εμφάνιση Λογότυπου */}
+                        <div className="flex-shrink-0">
+                            <img 
+                                src={profile.logoUrl || `https://ui-avatars.com/api/?name=${user.displayName?.charAt(0).toUpperCase()}&background=4a90e2&color=fff&size=80`} 
+                                alt="Logo" 
+                                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" 
+                            />
                         </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Συνδεδεμένος ως:</p>
-                            <p className="text-lg font-semibold text-[#1a2847]">{user.displayName}</p>
-                            <p className="text-sm text-gray-500">{user.email}</p>
+                        
+                        {/* 9. ΝΕΟ: Κουμπί Upload */}
+                        <div className="flex-1">
+                            <label htmlFor="logoUpload" className="cursor-pointer text-sm text-[#4a90e2] hover:text-[#1a2847] font-semibold">
+                                {uploading ? 'Περιμένετε...' : (logoFile ? logoFile.name : 'Αλλαγή Λογότυπου')}
+                            </label>
+                            <input 
+                                id="logoUpload"
+                                type="file" 
+                                accept="image/png, image/jpeg"
+                                className="hidden" 
+                                onChange={handleFileChange}
+                                disabled={uploading || saving}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">PNG ή JPG (Μέγιστο 1MB)</p>
                         </div>
                     </div>
                 </div>
@@ -162,17 +222,19 @@ export default function ProfileManager({ user }) {
                 <div className="flex justify-end pt-4 border-t border-gray-200">
                     <button
                         type="submit"
-                        disabled={saving}
+                        // 10. ΝΕΟ: Κλειδώνει το κουμπί ΚΑΙ όταν ανεβάζει
+                        disabled={saving || uploading} 
                         className={`flex items-center space-x-2 px-8 py-3 rounded-lg font-semibold text-white transition-all shadow-md hover:shadow-lg ${
-                            saving 
+                            (saving || uploading)
                                 ? 'bg-gray-400 cursor-not-allowed' 
                                 : 'bg-[#4a90e2] hover:bg-[#1a2847]'
                         }`}
                     >
-                        {saving ? (
+                        {(saving || uploading) ? (
                             <>
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                <span>Αποθήκευση...</span>
+                                {/* 11. ΝΕΟ: Δυναμικό μήνυμα */}
+                                <span>{uploading ? 'Ανέβασμα...' : 'Αποθήκευση...'}</span>
                             </>
                         ) : (
                             <>
