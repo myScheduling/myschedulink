@@ -7,8 +7,18 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 
+// Type για Business
+interface Business {
+    id: string;
+    businessName?: string;
+    displayName?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+}
+
 export default function HomePage() {
-    const [businesses, setBusinesses] = useState([]);
+    const [businesses, setBusinesses] = useState<Business[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const router = useRouter();
@@ -23,9 +33,9 @@ export default function HomePage() {
             const q = query(usersRef, where('businessName', '!=', null));
             const snapshot = await getDocs(q);
             
-            const businessList = snapshot.docs.map(doc => ({
+            const businessList: Business[] = snapshot.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data()
+                ...(doc.data() as Omit<Business, 'id'>)
             })).filter(b => b.businessName); // Μόνο με business name
             
             setBusinesses(businessList);
