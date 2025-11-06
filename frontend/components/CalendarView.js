@@ -181,30 +181,30 @@ export default function CalendarView() {
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
+                <div className="bg-white border-2 border-blue-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between">
-                        <span className="text-3xl">📅</span>
-                        <span className="text-3xl font-bold">{bookings.filter(b => b.status !== 'cancelled').length}</span>
+                        <span className="text-4xl">📊</span>
+                        <span className="text-4xl font-bold text-blue-600">{bookings.filter(b => b.status !== 'cancelled').length}</span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold opacity-90">Ενεργά Ραντεβού</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">Ενεργά Ραντεβού</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
+                <div className="bg-white border-2 border-green-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between">
-                        <span className="text-3xl">📆</span>
-                        <span className="text-3xl font-bold">{dayBookings.filter(b => b.status !== 'cancelled').length}</span>
+                        <span className="text-4xl">✅</span>
+                        <span className="text-4xl font-bold text-green-600">{dayBookings.filter(b => b.status !== 'cancelled').length}</span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold opacity-90">Ραντεβού Σήμερα</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">Ραντεβού Σήμερα</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
+                <div className="bg-white border-2 border-purple-500 p-6 rounded-lg shadow-md hover:shadow-xl transition-all">
                     <div className="flex items-center justify-between">
-                        <span className="text-3xl">🗓️</span>
-                        <span className="text-3xl font-bold">
+                        <span className="text-4xl">📌</span>
+                        <span className="text-4xl font-bold text-purple-600">
                             {new Set(bookings.filter(b => b.status !== 'cancelled').map(b => b.date)).size}
                         </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold opacity-90">Ημέρες με Ραντεβού</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-800">Ημέρες με Ραντεβού</p>
                 </div>
             </div>
 
