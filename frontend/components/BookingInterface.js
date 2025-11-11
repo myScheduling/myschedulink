@@ -84,7 +84,7 @@ export default function BookingInterface({ services, professionalId, professiona
 
         try {
             // 1. Create booking in Firestore
-            await addDoc(collection(db, 'bookings'), {
+            const bookingRef = await addDoc(collection(db, 'bookings'), {
                 professionalId,
                 serviceId: selectedService._id || selectedService.id,
                 serviceName: selectedService.name,
@@ -100,7 +100,36 @@ export default function BookingInterface({ services, professionalId, professiona
                 createdAt: Timestamp.fromDate(new Date())
             });
 
-            // 2. Send confirmation email
+            // 2. Send to n8n webhook (Google Calendar + Gmail automation)
+            try {
+                await fetch('/api/webhook/send-to-n8n', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event: 'new_booking',
+                        timestamp: new Date().toISOString(),
+                        booking: {
+                            id: bookingRef.id,
+                            clientName: clientDetails.name,
+                            clientEmail: clientDetails.email,
+                            serviceName: selectedService.name,
+                            date: dateString,
+                            time: selectedTime,
+                            totalPrice: selectedService.price || 0,
+                            status: 'confirmed',
+                            businessName: professional?.businessName || professional?.displayName || 'Κατάστημα',
+                            phone: professional?.phone || '',
+                            address: professional?.address || ''
+                        }
+                    })
+                });
+                console.log('✅ Booking sent to n8n successfully!');
+            } catch (n8nError) {
+                console.error('⚠️ n8n webhook failed (non-critical):', n8nError);
+                // Δεν σταματάμε το booking αν αποτύχει το n8n
+            }
+
+            // 3. Send confirmation email
             try {
                 await fetch('/api/send-email', {
                     method: 'POST',
