@@ -102,7 +102,7 @@ export default function HomePage() {
                         <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 leading-tight">
                             Διαχείριση Ραντεβού
                             <br />
-                            <span className="bg-gradient-to-r from-[#4a90e2] to-[#8b5cf6] bg-clip-text text-transparent">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4a90e2] to-[#8b5cf6]">
                                 Χωρίς Κόπο
                             </span>
                         </h1>
@@ -116,16 +116,16 @@ export default function HomePage() {
                         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
                             <Link
                                 href="/login"
-                                className="group px-8 py-5 bg-gradient-to-r from-[#4a90e2] to-[#357abd] text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2"
+                                className="group px-10 py-5 bg-gradient-to-r from-[#4a90e2] to-[#357abd] text-white rounded-2xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
                             >
                                 <span>Ξεκίνα Δωρεάν</span>
-                                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
                             </Link>
                             <button
                                 onClick={() => document.getElementById('businesses')?.scrollIntoView({ behavior: 'smooth' })}
-                                className="px-8 py-5 bg-white text-gray-900 border-2 border-gray-200 rounded-2xl font-bold text-lg hover:border-[#4a90e2] hover:shadow-xl transition-all duration-200"
+                                className="px-10 py-5 bg-white text-gray-900 border-3 border-gray-300 rounded-2xl font-bold text-xl hover:border-[#4a90e2] hover:shadow-xl transition-all duration-300 shadow-md"
                             >
                                 Δες Επιχειρήσεις
                             </button>
@@ -156,10 +156,10 @@ export default function HomePage() {
                             { icon: "📊", title: "Analytics & Insights", desc: "Δες πώς αναπτύσσεται η επιχείρησή σου" },
                             { icon: "🚀", title: "Γρήγορο & Απλό", desc: "Ξεκίνα να δέχεσαι κρατήσεις σε λεπτά" }
                         ].map((feature, i) => (
-                            <div key={i} className="group relative bg-white p-6 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-[#4a90e2] hover:-translate-y-2">
-                                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{feature.icon}</div>
-                                <h3 className="font-bold text-lg text-gray-900 mb-2">{feature.title}</h3>
-                                <p className="text-gray-600 text-sm leading-relaxed">{feature.desc}</p>
+                            <div key={i} className="group relative bg-white p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-[#4a90e2] hover:-translate-y-2">
+                                <div className="text-6xl mb-6 group-hover:scale-110 transition-transform">{feature.icon}</div>
+                                <h3 className="font-bold text-xl text-gray-900 mb-3">{feature.title}</h3>
+                                <p className="text-gray-600 text-base leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -330,9 +330,9 @@ export default function HomePage() {
                             href="/login"
                             className="group relative px-12 py-6 bg-white text-[#4a90e2] rounded-2xl font-bold text-xl shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 overflow-hidden"
                         >
-                            <span className="relative z-10 flex items-center justify-center space-x-2">
+                            <span className="relative z-10 flex items-center justify-center space-x-3">
                                 <span>Ξεκίνα Τώρα</span>
-                                <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-7 h-7 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
                             </span>
@@ -342,9 +342,9 @@ export default function HomePage() {
                             onClick={() => document.getElementById('businesses')?.scrollIntoView({ behavior: 'smooth' })}
                             className="group px-12 py-6 bg-transparent text-white border-3 border-white rounded-2xl font-bold text-xl hover:bg-white hover:text-[#4a90e2] transition-all duration-300 shadow-lg"
                         >
-                            <span className="flex items-center justify-center space-x-2">
+                            <span className="flex items-center justify-center space-x-3">
                                 <span>Δες Επιχειρήσεις</span>
-                                <svg className="w-6 h-6 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-7 h-7 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </span>
