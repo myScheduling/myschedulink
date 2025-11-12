@@ -102,7 +102,7 @@ export default function HomePage() {
                         <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 leading-tight">
                             Διαχείριση Ραντεβού
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4a90e2] to-[#8b5cf6]">
+                            <span className="text-5x1 bg-clip-text bg-gradient-to-r from-[#4a90e2] to-[#8b5cf6]">
                                 Χωρίς Κόπο
                             </span>
                         </h1>
