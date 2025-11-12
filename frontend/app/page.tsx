@@ -340,7 +340,7 @@ export default function HomePage() {
                         </Link>
                         <button
                             onClick={() => document.getElementById('businesses')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="group px-12 py-6 bg-transparent text-white border-3 border-white rounded-2xl font-bold text-xl hover:bg-white hover:text-[#4a90e2] transition-all duration-300 shadow-lg"
+                            className="group px-12 py-6 bg-white text-[#4a90e2] border-3 border-white rounded-2xl font-bold text-xl hover:bg-gray-50 hover:shadow-2xl transition-all duration-300 shadow-lg"
                         >
                             <span className="flex items-center justify-center space-x-3">
                                 <span>Δες Επιχειρήσεις</span>
