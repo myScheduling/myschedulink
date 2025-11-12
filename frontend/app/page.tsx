@@ -116,9 +116,9 @@ export default function HomePage() {
                         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
                             <Link
                                 href="/login"
-                                className="group px-10 py-5 bg-gradient-to-r from-[#4a90e2] to-[#357abd] text-white rounded-2xl font-bold text-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
+                                className="px-10 py-5 bg-white text-gray-900 border-3 border-gray-300 rounded-2xl font-bold text-xl hover:border-[#4a90e2] hover:shadow-xl transition-all duration-300 shadow-md"
                             >
-                                <span>Ξεκίνα Δωρεάν</span>
+                                Ξεκίνα Δωρεάν
                                 <svg className="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
